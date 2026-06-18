@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Brainrot Admin Dashboard</title>
+<style>
+  :root {
+    --bg:       #0d0d14;
+    --surface:  #16161f;
+    --border:   #2a2a3a;
+    --accent:   #7c5cfc;
+    --accent2:  #fc5c7d;
+    --text:     #e8e8f0;
+    --muted:    #777890;
+    --success:  #3ecf8e;
+    --warn:     #f5a623;
+    --danger:   #fc5c5c;
+    --radius:   10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  /* ── Layout ── */
+  .layout { display: flex; min-height: 100vh; }
+  nav {
+    width: 220px; min-width: 220px; background: var(--surface);
+    border-right: 1px solid var(--border); padding: 24px 0;
+    display: flex; flex-direction: column; gap: 4px;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  nav .logo { padding: 0 20px 20px; font-size: 18px; font-weight: 700; color: var(--accent); }
+  nav .logo span { color: var(--accent2); }
+  nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; color: var(--muted); text-decoration: none;
+    border-radius: 0; font-size: 14px; transition: all .15s; cursor: pointer;
+  }
+  nav a:hover, nav a.active { background: rgba(124,92,252,.12); color: var(--text); border-left: 3px solid var(--accent); }
+  nav .section-label { padding: 14px 20px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  main { flex: 1; padding: 32px; overflow-y: auto; }
+
+  /* ── Cards ── */
+  .page { display: none; }
+  .page.active { display: block; }
+  h1 { font-size: 22px; margin-bottom: 8px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+  .card h2 { font-size: 15px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: rgba(124,92,252,.18); color: var(--accent); }
+
+  /* ── Form elements ── */
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  input, select, textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: 10px 14px; border-radius: 8px; font-size: 14px;
+    outline: none; transition: border-color .15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; }
+  .field { margin-bottom: 16px; }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 160px; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    border: none; cursor: pointer; transition: all .15s; text-decoration: none;
+  }
+  .btn-primary  { background: var(--accent);  color: #fff; }
+  .btn-primary:hover  { background: #6b4de6; }
+  .btn-danger   { background: var(--danger);  color: #fff; }
+  .btn-danger:hover   { background: #e04444; }
+  .btn-success  { background: var(--success); color: #fff; }
+  .btn-success:hover  { background: #30b87a; }
+  .btn-warn     { background: var(--warn);    color: #fff; }
+  .btn-warn:hover     { background: #d9901e; }
+  .btn-ghost    { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover    { border-color: var(--accent); color: var(--accent); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* ── Toast ── */
+  #toast-container { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; }
+  .toast {
+    padding: 14px 20px; border-radius: 10px; font-size: 14px; color: #fff;
+    min-width: 260px; max-width: 380px; box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    animation: slideIn .25s ease;
+  }
+  .toast.success { background: var(--success); }
+  .toast.error   { background: var(--danger); }
+  .toast.info    { background: var(--accent); }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ── Result box ── */
+  .result-box {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px; font-size: 13px; color: var(--success); margin-top: 14px;
+    white-space: pre-wrap; word-break: break-all; display: none;
+    max-height: 300px; overflow-y: auto;
+  }
+  .result-box.error { color: var(--danger); }
+  .result-box.show { display: block; }
+
+  /* ── Status bar ── */
+  .status-bar { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 22px; flex: 1; min-width: 140px; }
+  .stat .val { font-size: 26px; font-weight: 700; color: var(--accent); }
+  .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  td { padding: 10px 14px; border-bottom: 1px solid rgba(42,42,58,.6); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(124,92,252,.04); }
+
+  /* ── Tags ── */
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .tag-purple { background: rgba(124,92,252,.2); color: var(--accent); }
+  .tag-green  { background: rgba(62,207,142,.2); color: var(--success); }
+  .tag-red    { background: rgba(252,92,92,.2);  color: var(--danger); }
+  .tag-orange { background: rgba(245,166,35,.2); color: var(--warn); }
+
+  /* ── Online dot ── */
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-green { background: var(--success); }
+  .dot-red   { background: var(--danger); }
+
+  /* ── Spinner ── */
+  .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .flex-end { display: flex; justify-content: flex-end; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* ── Login Gate ── */
+  .layout { display: none; }
+  .layout.show { display: flex; }
+  #login-overlay {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center; z-index: 10000;
+  }
+  #login-overlay.hidden { display: none; }
+  .login-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 32px; width: 100%; max-width: 320px;
+  }
+  .login-box h1 { font-size: 18px; margin-bottom: 4px; text-align: center; }
+  .login-box .subtitle { text-align: center; margin-bottom: 22px; }
+  .login-box .field { margin-bottom: 14px; }
+  .login-box .btn { width: 100%; justify-content: center; margin-top: 4px; }
+  .login-error { color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center; display: none; }
+  .login-error.show { display: block; }
+
+  /* ── Searchable Dropdown ── */
+  .searchable-dropdown { position: relative; }
+  .dropdown-list {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 1000;
+    background: var(--surface); border: 1px solid var(--accent);
+    border-top: none; border-radius: 0 0 8px 8px;
+    max-height: 200px; overflow-y: auto; display: none;
+  }
+  .dropdown-list.open { display: block; }
+  .dropdown-item {
+    padding: 8px 14px; font-size: 13px; cursor: pointer;
+    color: var(--text); transition: background .1s;
+  }
+  .dropdown-item:hover { background: rgba(124,92,252,.15); color: var(--accent); }
+  .dropdown-item.no-match { color: var(--muted); cursor: default; }
+  .dropdown-item.no-match:hover { background: none; color: var(--muted); }
+
+</style>
+</head>
+<body>
+
+<!-- ── Login Gate ── -->
+<div id="login-overlay">
+  <div class="login-box">
+    <h1>🧠 Brainrot Admin</h1>
+    <p class="subtitle">Sign in to continue</p>
+    <div class="field">
+      <label>Username</label>
+      <input id="login-user" placeholder="Username" autocomplete="username"/>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="login-pass" type="password" placeholder="Password" autocomplete="current-password"/>
+    </div>
+    <button class="btn btn-primary" onclick="attemptLogin()">🔓 Enter</button>
+    <div class="login-error" id="login-error">Access denied — invalid username or password.</div>
+
+    <div id="rng-box" style="display:none;margin-top:18px;text-align:center">
+      <hr style="margin:18px 0"/>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:12px">No admin access — but here's a free roll! 🎲</p>
+      <button class="btn btn-success" onclick="rollRNG()" style="width:100%;justify-content:center">🎲 Roll</button>
+      <div id="rng-result" style="margin-top:14px;display:none">
+        <div style="font-size:18px;font-weight:700;color:var(--accent)" id="rng-animal-name"></div>
+        <button class="btn btn-primary" onclick="claimRNG()" style="width:100%;justify-content:center;margin-top:10px" id="rng-claim-btn">✅ Claim</button>
+      </div>
+      <div class="result-box" id="rng-msg" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="layout" id="layout">
+
+<!-- ── Sidebar ── -->
+<nav>
+  <div class="logo">🧠 Brain<span>rot</span></div>
+
+  <div class="section-label">Overview</div>
+  <a onclick="goto('home')" id="nav-home" class="active">🏠 Dashboard</a>
+
+  <div class="section-label">Player Tools</div>
+  <a onclick="goto('give')">🎁 Give Brainrot</a>
+  <a onclick="goto('viewbase')">🔍 View Base</a>
+  <a onclick="goto('editbrainrot')">✏️ Edit Brainrot</a>
+  <a onclick="goto('signanimal')">✍️ Sign Animal</a>
+  <a onclick="goto('troll')">🤡 Troll Base</a>
+  <a onclick="goto('fakespawn')" id="nav-fakespawn">👻 Fake Spawn</a>
+  <a onclick="goto('remotespawn')" id="nav-remotespawn">🎯 Remote Spawn</a>
+  <a onclick="goto('remoteannounce')" id="nav-announce">📢 Remote Announce</a>
+  <a onclick="goto('remoteevent')" id="nav-remoteevent">⚡ Remote Event</a>
+  <a onclick="goto('freezebrainrot')" id="nav-freezebrainrot">🥶 Freeze Brainrot</a>
+  <a onclick="goto('giveitem')" id="nav-giveitem">🎒 Give Item</a>
+  <a onclick="goto('forcespeed')" id="nav-forcespeed">💨 Force Speed</a>
+
+  <div class="section-label">Server Tools</div>
+  <a onclick="goto('poofroad')" id="nav-poofroad">💥 Poof Road</a>
+  <a onclick="goto('playsound')" id="nav-playsound">🔊 Play Sound</a>
+  <a onclick="goto('redeemcodes')" id="nav-redeemcodes">🎟️ Create Codes</a>
+
+  <div class="section-label">Events</div>
+  <a onclick="goto('traittime')">🌟 TraitTime</a>
+  <a onclick="goto('lucktime')">🍀 LuckTime</a>
+  <a onclick="goto('announce')">📣 Announce</a>
+
+  <div class="section-label">Data</div>
+  <a onclick="goto('rebuildcache')">🔄 Rebuild Cache</a>
+  <a onclick="goto('brainrotcounts')">📊 Brainrot Counts</a>
+  <a onclick="goto('rollable')">🎲 Rollable Animals</a>
+
+  <div class="section-label">DLC</div>
+  <a onclick="goto('dlccode')">🔑 Generate DLC Code</a>
+  <a onclick="goto('dlcredeem')">💎 Redeem DLC Code</a>
+
+  <div class="section-label">Misc</div>
+  <a onclick="goto('dm')">💬 Send DM</a>
+</nav>
+
+<!-- ── Main ── -->
+<main>
+
+<!-- HOME -->
+<div class="page active" id="page-home">
+  <h1>Dashboard</h1>
+  <p class="subtitle">Bot status and live player overview.</p>
+
+  <div class="status-bar">
+    <div class="stat"><div class="val" id="stat-players">—</div><div class="lbl">Players In-Game</div></div>
+    <div class="stat"><div class="val" id="stat-animals">—</div><div class="lbl">Cached Animals</div></div>
+    <div class="stat"><div class="val" id="stat-cache-age">—</div><div class="lbl">Cache Built</div></div>
+    <div class="stat"><div class="val" id="stat-rollable">—</div><div class="lbl">Rollable Animals</div></div>
+  </div>
+
+  <div class="card">
+    <h2>🟢 Players Currently In-Game</h2>
+    <div id="players-list" style="color:var(--muted);font-size:14px">Loading...</div>
+  </div>
+</div>
+
+<!-- GIVE -->
+<div class="page" id="page-give">
+  <h1>🎁 Give Brainrot</h1>
+  <p class="subtitle">Add a brainrot directly to a player's base (in-game or datastore fallback).</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Roblox Username</label><input id="give-user" placeholder="e.g. Builderman"/></div>
+      <div class="field"><label>Brainrot Name</label><input id="give-animal" placeholder="e.g. Skibidi Toilet"/></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Mutation (optional)</label><input id="give-mutation" placeholder="e.g. Gold, Diamond, Rainbow"/></div>
+      <div class="field"><label>Traits (comma-separated, optional)</label><input id="give-traits" placeholder="e.g. Halo, Lucky"/></div>
+    </div>
+    <button class="btn btn-primary" onclick="runGive()">🎁 Give Brainrot</button>
+    <div class="result-box" id="give-result"></div>
+  </div>
+</div>
+
+<!-- VIEW BASE -->
+<div class="page" id="page-viewbase">
+  <h1>🔍 View Base</h1>
+  <p class="subtitle">See what brainrots a player currently has in their base.</p>
+  <div class="card">
+    <div class="field" style="max-width:360px"><label>Roblox Username</label><input id="vb-user" value="K_koolio_K" placeholder="e.g. Builderman"/></div>
+    <button class="btn btn-primary" onclick="runViewBase()">🔍 Look Up Base</button>
+    <div class="result-box" id="vb-result"></div>
+  </div>
+  <div class="card" id="vb-table-card" style="display:none">
+    <h2>Base Contents</h2>
+    <table id="vb-table"><thead><tr><th>#</th><th>Brainrot</th><th>Mutation</th><th>Traits</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<!-- EDIT BRAINROT -->
+<div class="page" id="page-editbrainrot">
+  <h1>✏️ Edit Brainrot</h1>
+  <p class="subtitle">Change the mutation and traits on a brainrot in a player's base.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Roblox Username</label><input id="eb-user" placeholder="e.g. Builderman"/></div>
+      <div class="field">
+        <label>Brainrot Name (exact)</label>
+        <div class="searchable-dropdown" id="eb-animal-wrap">
+          <input id="eb-animal" placeholder="Type to search..." autocomplete="off" oninput="filterDropdown('eb-animal','eb-animal-list')" onfocus="showDropdown('eb-animal-list')" onblur="hideDropdown('eb-animal-list')"/>
+          <div class="dropdown-list" id="eb-animal-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Mutation (leave blank to clear)</label><input id="eb-mutation" placeholder="e.g. Gold"/></div>
+      <div class="field"><label>Traits (comma-separated, blank to clear)</label><input id="eb-traits" placeholder="e.g. Halo, Lucky"/></div>
+    </div>
+    <button class="btn btn-primary" onclick="runEditBrainrot()">✏️ Apply Edit</button>
+    <div class="result-box" id="eb-result"></div>
+  </div>
+</div>
+
+<!-- SIGN ANIMAL -->
+<div class="page" id="page-signanimal">
+  <h1>✍️ Sign Animal</h1>
+  <p class="subtitle">Add the "Koolio Signed" trait to a brainrot in a player's base.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Roblox Username</label><input id="sa-user" placeholder="e.g. Builderman"/></div>
+      <div class="field">
+        <label>Brainrot Name (exact)</label>
+        <div class="searchable-dropdown" id="sa-animal-wrap">
+          <input id="sa-animal" placeholder="Type to search..." autocomplete="off" oninput="filterDropdown('sa-animal','sa-animal-list')" onfocus="showDropdown('sa-animal-list')" onblur="hideDropdown('sa-animal-list')"/>
+          <div class="dropdown-list" id="sa-animal-list"></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-success" onclick="runSignAnimal()">✍️ Sign Animal</button>
+    <div class="result-box" id="sa-result"></div>
+  </div>
+</div>
+
+<!-- TROLL -->
+<div class="page" id="page-troll">
+  <h1>🤡 Troll Base</h1>
+  <p class="subtitle">Temporarily replace every brainrot in a player's base with a troll animal.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Roblox Username</label><input id="troll-user" placeholder="e.g. Builderman"/></div>
+      <div class="field"><label>Duration (seconds)</label><input id="troll-dur" type="number" placeholder="30" min="1" max="86400"/></div>
+    </div>
+    <div class="field" style="max-width:360px"><label>Troll Brainrot (blank = Noobini Pizzanini)</label><input id="troll-animal" placeholder="e.g. Noobini Pizzanini"/></div>
+    <button class="btn btn-warn" onclick="runTroll()">🤡 Start Troll</button>
+    <div class="result-box" id="troll-result"></div>
+  </div>
+</div>
+
+<!-- FREEZE BRAINROT -->
+<div class="page" id="page-freezebrainrot">
+  <h1>🥶 Freeze Brainrot</h1>
+  <p class="subtitle">Freeze or unfreeze a specific brainrot on the road in a target server by Job ID.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Server Job ID</label><input id="frz-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field">
+        <label>Brainrot Name</label>
+        <div class="searchable-dropdown">
+          <input id="frz-animal" placeholder="Type to search..." autocomplete="off" oninput="filterDropdown('frz-animal','frz-animal-list')" onfocus="showDropdown('frz-animal-list')" onblur="hideDropdown('frz-animal-list')"/>
+          <div class="dropdown-list" id="frz-animal-list"></div>
+        </div>
+      </div>
+      <div class="field" style="max-width:180px">
+        <label>Action</label>
+        <select id="frz-freeze">
+          <option value="true">🥶 Freeze</option>
+          <option value="false">▶️ Unfreeze</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="runFreezebrainrot()">🥶 Send Command</button>
+    <div class="result-box" id="frz-result"></div>
+  </div>
+  <div class="card" style="border-color:rgba(124,92,252,.3)">
+    <h2>ℹ️ How it works</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7">
+      Targets a specific server by <strong>Job ID</strong> and sets <code>ForceIdle</code> on all matching brainrots on the road.<br>
+      <strong>Freeze</strong> stops them in place. <strong>Unfreeze</strong> lets them resume movement.<br>
+      Only affects brainrots currently on the road — not ones in player bases.
+    </p>
+  </div>
+</div>
+
+<!-- GIVE ITEM -->
+<div class="page" id="page-giveitem">
+  <h1>🎒 Give Item</h1>
+  <p class="subtitle">Give a tool/item to a player currently in a specific server by Job ID.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Server Job ID</label><input id="gi-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field"><label>Roblox Username</label><input id="gi-user" placeholder="e.g. Builderman"/></div>
+      <div class="field"><label>Item Name</label><input id="gi-item" placeholder="e.g. Flying Carpet"/></div>
+    </div>
+    <button class="btn btn-success" onclick="runGiveItem()">🎒 Give Item</button>
+    <div class="result-box" id="gi-result"></div>
+  </div>
+  <div class="card" style="border-color:rgba(62,207,142,.3)">
+    <h2>ℹ️ How it works</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7">
+      Targets a player by username on a specific server and clones the named tool from <code>ReplicatedStorage.Items</code> into their Backpack.<br>
+      The player must be <strong>currently in-game</strong> on that server for this to work.
+    </p>
+  </div>
+</div>
+
+<!-- FORCE SPEED -->
+<div class="page" id="page-forcespeed">
+  <h1>💨 Force Speed</h1>
+  <p class="subtitle">Force a player's WalkSpeed to a specific value in a target server. Set to 0 to disable.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Server Job ID</label><input id="spd-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field"><label>Roblox Username</label><input id="spd-user" placeholder="e.g. Builderman"/></div>
+      <div class="field" style="max-width:180px"><label>Speed (0 = disable)</label><input id="spd-speed" type="number" placeholder="16" min="0" max="9999"/></div>
+    </div>
+    <button class="btn btn-warn" onclick="runForceSpeed()">💨 Set Speed</button>
+    <div class="result-box" id="spd-result"></div>
+  </div>
+  <div class="card" style="border-color:rgba(245,166,35,.3)">
+    <h2>ℹ️ How it works</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7">
+      Continuously forces the player's <code>Humanoid.WalkSpeed</code> every 0.1s until you set it to <strong>0</strong> to disable.<br>
+      The player must be <strong>currently in-game</strong> on that server.<br>
+      Default Roblox walk speed is <strong>16</strong>.
+    </p>
+  </div>
+</div>
+
+<!-- TRAIT TIME -->
+<div class="page" id="page-traittime">
+  <h1>🌟 TraitTime</h1>
+  <p class="subtitle">Activate TraitTime — /rng rolls have a 35% trait chance for the specified duration.</p>
+  <div class="card">
+    <div class="field" style="max-width:260px"><label>Duration (seconds)</label><input id="tt-amount" type="number" placeholder="300" min="1" max="86400"/></div>
+    <button class="btn btn-success" onclick="runTraitTime()">🌟 Activate TraitTime</button>
+    <div class="result-box" id="tt-result"></div>
+  </div>
+</div>
+
+<!-- LUCK TIME -->
+<div class="page" id="page-lucktime">
+  <h1>🍀 LuckTime</h1>
+  <p class="subtitle">Add rare secret animals to the rollable pool for the specified duration.</p>
+  <div class="card">
+    <div class="field" style="max-width:260px"><label>Duration (seconds)</label><input id="lt-amount" type="number" placeholder="300" min="1" max="86400"/></div>
+    <button class="btn btn-success" onclick="runLuckTime()">🍀 Activate LuckTime</button>
+    <div class="result-box" id="lt-result"></div>
+  </div>
+</div>
+
+<!-- ANNOUNCE -->
+<div class="page" id="page-announce">
+  <h1>📣 Announce</h1>
+  <p class="subtitle">Send a message to the announcements channel.</p>
+  <div class="card">
+    <div class="field"><label>Message</label><textarea id="ann-msg" placeholder="Type your announcement here..."></textarea></div>
+    <button class="btn btn-primary" onclick="runAnnounce()">📣 Send Announcement</button>
+    <div class="result-box" id="ann-result"></div>
+  </div>
+</div>
+
+<!-- REBUILD CACHE -->
+<div class="page" id="page-rebuildcache">
+  <h1>🔄 Rebuild Cache</h1>
+  <p class="subtitle">Scan all datastore entries and rebuild the brainrot animal statistics cache. This can take a few minutes.</p>
+  <div class="card">
+    <p style="color:var(--muted);font-size:14px;margin-bottom:18px">⚠️ This triggers a full datastore scan. Only run this when you need fresh statistics.</p>
+    <button class="btn btn-warn" onclick="runRebuildCache()">🔄 Rebuild Cache Now</button>
+    <div class="result-box" id="rc-result"></div>
+  </div>
+</div>
+
+<!-- BRAINROT COUNTS -->
+<div class="page" id="page-brainrotcounts">
+  <h1>📊 Brainrot Counts</h1>
+  <p class="subtitle">Look up how many of a specific brainrot exist across all players.</p>
+  <div class="card">
+    <div class="field" style="max-width:360px"><label>Brainrot Name (exact)</label><input id="bc-name" placeholder="e.g. Skibidi Toilet"/></div>
+    <button class="btn btn-primary" onclick="runBrainrotCounts()">📊 Look Up</button>
+    <div class="result-box" id="bc-result"></div>
+  </div>
+  <div class="card" id="bc-detail" style="display:none">
+    <h2 id="bc-title">Results</h2>
+    <div class="row">
+      <div style="flex:1">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px">MUTATIONS</p>
+        <table id="bc-mut-table"><thead><tr><th>Mutation</th><th>Count</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div style="flex:1">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px">TRAITS</p>
+        <table id="bc-trait-table"><thead><tr><th>Trait</th><th>Count</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ROLLABLE -->
+<div class="page" id="page-rollable">
+  <h1>🎲 Rollable Animals</h1>
+  <p class="subtitle">View and manage the list of animals available for /rng rolls.</p>
+  <div class="card">
+    <h2>Current Rollable List <button class="btn btn-ghost" style="padding:4px 12px;font-size:12px" onclick="loadRollable()">↻ Refresh</button></h2>
+    <div id="rollable-list" style="color:var(--muted);font-size:14px">Loading...</div>
+  </div>
+  <div class="card">
+    <h2>Add Animal</h2>
+    <div class="row" style="align-items:flex-end">
+      <div class="field"><label>Animal Name</label><input id="rollable-add-name" placeholder="e.g. John Pork"/></div>
+      <div><button class="btn btn-success" onclick="addRollable()">➕ Add</button></div>
+    </div>
+    <div class="result-box" id="rollable-result"></div>
+  </div>
+</div>
+
+<!-- DLC CODE -->
+<div class="page" id="page-dlccode">
+  <h1>🔑 Generate DLC Code</h1>
+  <p class="subtitle">Generate a one-time DLC code for a player (they must own the DLC Code gamepass).</p>
+  <div class="card">
+    <div class="field" style="max-width:360px"><label>Roblox Username</label><input id="dlc-user" placeholder="e.g. Builderman"/></div>
+    <button class="btn btn-primary" onclick="runDLCCode()">🔑 Generate Code</button>
+    <div class="result-box" id="dlc-result"></div>
+  </div>
+</div>
+
+<!-- DLC REDEEM -->
+<div class="page" id="page-dlcredeem">
+  <h1>💎 Redeem DLC Code</h1>
+  <p class="subtitle">Redeem a DLC code to receive a brainrot (requires linked Roblox account).</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Roblox Username</label><input id="dlcr-user" placeholder="e.g. Builderman"/></div>
+      <div class="field"><label>DLC Code</label><input id="dlcr-code" placeholder="e.g. A1B2C3D4E5F6" style="text-transform:uppercase"/></div>
+    </div>
+    <button class="btn btn-primary" onclick="runDLCRedeem()">💎 Redeem Code</button>
+    <div class="result-box" id="dlcr-result"></div>
+  </div>
+</div>
+
+<!-- DM -->
+<div class="page" id="page-dm">
+  <h1>💬 Send DM</h1>
+  <p class="subtitle">Send a direct message to a Discord user by their ID.</p>
+  <div class="card">
+    <div class="field" style="max-width:360px"><label>Discord User ID</label><input id="dm-user" placeholder="e.g. 1170834053004529747"/></div>
+    <div class="field"><label>Message</label><textarea id="dm-msg" placeholder="Type your message..."></textarea></div>
+    <button class="btn btn-primary" onclick="runDM()">💬 Send DM</button>
+    <div class="result-box" id="dm-result"></div>
+  </div>
+</div>
+
+<!-- FAKE SPAWN -->
+<div class="page" id="page-fakespawn">
+  <h1>👻 Fake Spawn</h1>
+  <p class="subtitle">Spawn a fake brainrot on a server's road. When collected it poofs — no reward given. Rolls 15% Gold / 10% Diamond / 5% Rainbow mutation automatically.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Server Job ID</label><input id="fs-user" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field">
+        <label>Brainrot Name (appears on road)</label>
+        <div class="searchable-dropdown" id="fs-animal-wrap">
+          <input id="fs-animal" placeholder="Type to search..." autocomplete="off" oninput="filterDropdown('fs-animal','fs-animal-list')" onfocus="showDropdown('fs-animal-list')" onblur="hideDropdown('fs-animal-list')"/>
+          <div class="dropdown-list" id="fs-animal-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="max-width:220px">
+        <label>Fake Type</label>
+        <select id="fs-faketype">
+          <option value="fake1">Fake 1 — IsFake (poofs on click)</option>
+          <option value="fake2">Fake 2 — iffake (poofs on arrival)</option>
+          <option value="fake3">Fake 3 — FakeInBase (poofs in base)</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-warn" onclick="runFakeSpawn()">👻 Queue Fake Spawn</button>
+    <div class="result-box" id="fs-result"></div>
+  </div>
+  <div class="card" style="border-color:rgba(252,92,92,.3)">
+    <h2>⚠️ How it works</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7">
+      1. Enter the <strong>Job ID</strong> of the server you want to target.<br>
+      2. Choose a fake type: <strong>Fake 1</strong> sets <code>IsFake</code> — the brainrot poofs the moment a player clicks it. <strong>Fake 2</strong> sets <code>iffake</code> — it appears to be collected normally and walks to the base, then poofs on arrival. <strong>Fake 3</strong> sets <code>FakeInBase</code> — it is collected into the base normally, then poofs once inside.<br>
+      3. It has a <strong>15% Gold</strong>, <strong>10% Diamond</strong>, or <strong>5% Rainbow</strong> mutation rolled on delivery.<br>
+      4. Either way it <strong>poofs</strong> with no brainrot and no reward.<br>
+      5. Only one fake spawn can be queued per server at a time — queueing another overwrites the previous.
+    </p>
+  </div>
+</div>
+
+<!-- REMOTE ANNOUNCE -->
+<div class="page" id="page-remoteannounce">
+  <h1>📢 Remote Announce</h1>
+  <p class="subtitle">Send an in-game notification (toast popup) to everyone in a specific server, by Job ID.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Server Job ID</label><input id="an-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Prefix <span style="font-weight:400;color:var(--muted)">(optional)</span></label><input id="an-prefix" placeholder="e.g. ADMIN" oninput="updateAnnouncePreview()"/></div>
+      <div class="field">
+        <label>Gradient <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <select id="an-gradient" onchange="updateAnnouncePreview()">
+          <option value="">— None —</option>
+          <option value="Rainbow">🌈 Rainbow (Brainrot God)</option>
+          <option value="Zebra">🦓 Zebra (Secret)</option>
+          <option value="OG">⭐ OG (OP)</option>
+          <option value="Limited">💎 Limited</option>
+          <option value="Meme">😂 Meme</option>
+          <option value="Throwback">🕰️ Throwback (Ascended)</option>
+          <option value="Boundless">🌀 Boundless</option>
+          <option value="Icon">👑 Icon</option>
+          <option value="Transendant">✨ Transendant</option>
+          <option value="YellowRed">🔶 YellowRed (Admin/Taco/Spooky)</option>
+          <option value="GreenRed">🎄 GreenRed (Festive)</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Announcement Text</label><textarea id="an-text" placeholder="Type your announcement..." oninput="updateAnnouncePreview()"></textarea></div>
+    </div>
+    <div id="an-preview" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:var(--muted)">
+      <span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6">Preview</span><br>
+      <span id="an-preview-text" style="color:var(--text);word-break:break-all"></span>
+    </div>
+    <button class="btn btn-warn" onclick="runRemoteAnnounce()">📢 Queue Announcement</button>
+    <div class="result-box" id="an-result"></div>
+  </div>
+</div>
+<!-- REMOTE SPAWN -->
+<div class="page" id="page-remotespawn">
+  <h1>🎯 Remote Spawn</h1>
+  <p class="subtitle">Spawn a real brainrot on a server's road by Job ID. The next player who collects it gets it for real — no fake attributes.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Server Job ID</label><input id="rs-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field">
+        <label>Brainrot Name</label>
+        <div class="searchable-dropdown" id="rs-animal-wrap">
+          <input id="rs-animal" placeholder="Type to search..." autocomplete="off" oninput="filterDropdown('rs-animal','rs-animal-list')" onfocus="showDropdown('rs-animal-list')" onblur="hideDropdown('rs-animal-list')"/>
+          <div class="dropdown-list" id="rs-animal-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>Mutation (optional)</label><input id="rs-mutation" placeholder="e.g. Gold, Diamond, Rainbow"/></div>
+      <div class="field"><label>Traits (comma-separated, optional)</label><input id="rs-traits" placeholder="e.g. Halo, Lucky"/></div>
+    </div>
+    <button class="btn btn-success" onclick="runRemoteSpawn()">🎯 Queue Remote Spawn</button>
+    <div class="result-box" id="rs-result"></div>
+  </div>
+  <div class="card" style="border-color:rgba(62,207,142,.3)">
+    <h2>ℹ️ How it works</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7">
+      1. Enter the <strong>Job ID</strong> of the target server.<br>
+      2. Choose the brainrot name, and optionally a mutation and/or traits.<br>
+      3. The animal spawns on the road <strong>with real attributes</strong> — whoever collects it keeps it.<br>
+      4. Only one remote spawn can be queued per server at a time — queueing another overwrites the previous.
+    </p>
+  </div>
+</div>
+
+<!-- REMOTE EVENT -->
+<div class="page" id="page-remoteevent">
+  <h1>⚡ Remote Event</h1>
+  <p class="subtitle">Trigger a named in-game event on a specific server by Job ID.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Server Job ID</label><input id="re-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field">
+        <label>Event Name</label>
+        <select id="re-eventname">
+          <option value="">— Select an event —</option>
+          <option>6x Server Luck</option>
+          <option>8x Server Luck</option>
+          <option>10x Server Luck</option>
+          <option>12x Server Luck</option>
+          <option>15x Server Luck</option>
+          <option>20x Server Luck</option>
+          <option>1000x Server Luck</option>
+          <option>Mega Luck</option>
+          <option>1 Year</option>
+          <option>Easter</option>
+          <option>St Patricks</option>
+          <option>1x1x1x1</option>
+          <option>3 Roads</option>
+          <option>John Pork</option>
+          <option>4th of July</option>
+          <option>Eggrot Hunt</option>
+          <option>Bloodmoon</option>
+          <option>Leprechaun Lucky Block</option>
+          <option>Bombardiro Crocodilo</option>
+          <option>Brazil</option>
+          <option>Bubblegum</option>
+          <option>Cyber</option>
+          <option>Candy</option>
+          <option>Chicleteira Bicicleteira</option>
+          <option>Concert</option>
+          <option>Crab Rave</option>
+          <option>Dul Dul Dul</option>
+          <option>Extinct</option>
+          <option>FatSammy</option>
+          <option>Galaxy</option>
+          <option>Glitch</option>
+          <option>Divine</option>
+          <option>Graveyard</option>
+          <option>Indonesia</option>
+          <option>La Vacca Saturno Saturnita</option>
+          <option>Los Matteos</option>
+          <option>Matteo</option>
+          <option>Meowl</option>
+          <option>Mexico</option>
+          <option>Molten</option>
+          <option>Tung Tung Attack</option>
+          <option>Nyan Cats</option>
+          <option>Phase 1: Sleepy</option>
+          <option>Phase 2: Galaxy Introduction</option>
+          <option>Phase 3: Sammy's Base</option>
+          <option>Phase 4: Mygame43</option>
+          <option>Phase 5: Sammy Snap</option>
+          <option>Phase 6: Koolio's Resurrection</option>
+          <option>Phase 7: Koolio's Aura</option>
+          <option>Phase 8: Ultra Luck</option>
+          <option>Phase 9: Admin Snaps</option>
+          <option>Phase 10: Tray Cutscene</option>
+          <option>Phase 11: Koolio's Aura Snap</option>
+          <option>Rain</option>
+          <option>Steak Snap</option>
+          <option>Rainbow</option>
+          <option>Raining Pizza</option>
+          <option>Raining Tacos</option>
+          <option>Raining Burgers</option>
+          <option>Rap Concert</option>
+          <option>Sammyni Spyderini</option>
+          <option>Snow</option>
+          <option>Solar Flare</option>
+          <option>Starfall</option>
+          <option>Egg City</option>
+          <option>Strawberry</option>
+          <option>Trick or Treat</option>
+          <option>UFO</option>
+          <option>Water</option>
+          <option>Witching Hour</option>
+          <option>YinYang</option>
+          <option>Winter Hour</option>
+          <option>Radioactive</option>
+          <option>Stock</option>
+          <option>Skibidi</option>
+          <option>Car Cutscene</option>
+          <option>Gingerbread Town</option>
+          <option>2026</option>
+          <option>Eid</option>
+          <option>Cursed</option>
+          <option>Lance</option>
+          <option>Ay Mi Gatito</option>
+          <option>Valentines</option>
+          <option>Backrooms</option>
+          <option>Summer</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-danger" onclick="runRemoteEvent()">⚡ Fire Event</button>
+    <div class="result-box" id="re-result"></div>
+  </div>
+  <div class="card" style="border-color:rgba(252,92,92,.3)">
+    <h2>ℹ️ How it works</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7">
+      1. Enter the <strong>Job ID</strong> of the target server.<br>
+      2. Select the event you want to fire from the dropdown.<br>
+      3. The game server polls every 3 seconds and calls <code>EventService:ExecuteEvent</code> when it receives the queued event.<br>
+      4. Only one event can be queued per server at a time — queueing another overwrites the previous.
+    </p>
+  </div>
+</div>
+<!-- POOF ROAD -->
+<div class="page" id="page-poofroad">
+  <h1>💥 Poof Road</h1>
+  <p class="subtitle">Instantly poof every brainrot currently walking the road in a target server — craft-spawn animals are skipped.</p>
+  <div class="card">
+    <div class="field" style="max-width:460px">
+      <label>Server Job ID</label>
+      <input id="pr-jobid" placeholder="e.g. 1234abcd-5678-efgh-..."/>
+    </div>
+    <button class="btn btn-danger" onclick="runPoofRoad()">💥 Poof All Road Animals</button>
+    <div class="result-box" id="pr-result"></div>
+  </div>
+  <div class="card" style="border-color:rgba(252,92,92,.3)">
+    <h2>ℹ️ How it works</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7">
+      Targets a specific server by <strong>Job ID</strong>.<br>
+      On the next poll cycle (≤3s), the game server iterates every model in <code>workspace.MovingAnimals</code>.<br>
+      Each non-craft-spawn animal gets the <strong>Poof VFX fired to all clients</strong>, the <strong>poof sound</strong> played, and is then <strong>destroyed</strong>.<br>
+      Animals that originated from the <strong>Craft Machine</strong> (<code>IsCraftSpawn = true</code>) are <strong>skipped</strong> and continue walking normally.<br>
+      This is a <strong>one-shot</strong> command — queue it again to poof the next wave.
+    </p>
+  </div>
+</div>
+
+<!-- PLAY SOUND -->
+<div class="page" id="page-playsound">
+  <h1>🔊 Play Sound</h1>
+  <p class="subtitle">Play a Roblox sound asset for all clients in a specific server by Job ID.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Server Job ID</label><input id="ps-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field"><label>Sound Asset ID</label><input id="ps-soundid" placeholder="e.g. 84435681380673" type="number" min="1"/></div>
+    </div>
+    <button class="btn btn-success" onclick="runPlaySound()">🔊 Play Sound</button>
+    <div class="result-box" id="ps-result"></div>
+  </div>
+  <div class="card" style="border-color:rgba(62,207,142,.3)">
+    <h2>ℹ️ How it works</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7">
+      1. Enter the <strong>Job ID</strong> of the target server.<br>
+      2. Enter the <strong>Roblox asset ID</strong> of the sound you want to play (numbers only — e.g. <code>84435681380673</code>).<br>
+      3. On the next poll cycle (≤3s), the game server plays the sound for <strong>all clients</strong> in that server.<br>
+      4. Only one sound command can be queued per server at a time — queueing another overwrites the previous.
+    </p>
+  </div>
+</div>
+<!-- CREATE CODES -->
+<div class="page" id="page-redeemcodes">
+  <h1>🎟️ Create Codes</h1>
+  <p class="subtitle">Create and manage in-game redeemable codes. Players type a code in-game to receive the linked brainrot(s).</p>
+
+  <!-- Create code card -->
+  <div class="card">
+    <h2>✨ Create Code <span class="badge">Amount is always 1</span></h2>
+    <div class="row">
+      <div class="field">
+        <label>Code Name</label>
+        <input id="rc-codename" placeholder="e.g. LAUNCH2025" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+      <div class="field">
+        <label>Brainrot Name</label>
+        <div class="searchable-dropdown">
+          <input id="rc-brainrot" placeholder="Type to search..." autocomplete="off"
+            oninput="filterDropdown('rc-brainrot','rc-brainrot-list')"
+            onfocus="showDropdown('rc-brainrot-list')"
+            onblur="hideDropdown('rc-brainrot-list')"/>
+          <div class="dropdown-list" id="rc-brainrot-list"></div>
+        </div>
+      </div>
+      <div class="field" style="max-width:180px">
+        <label>Limited Uses <span style="color:var(--muted);font-weight:400">(blank = unlimited)</span></label>
+        <input id="rc-uses" type="number" min="1" placeholder="e.g. 100"/>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="runCreateRedeemCode()">🎟️ Create Code</button>
+    <div class="result-box" id="rc-create-result"></div>
+  </div>
+
+  <!-- Create Triple Brainrot Code card -->
+  <div class="card" style="border-color:rgba(252,92,124,.35)">
+    <h2>🧠🧠🧠 Create Triple Code <span class="badge" style="background:rgba(252,92,124,.18);color:var(--accent2)">Spawns 3 Brainrots</span></h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">When a player redeems this code, they receive all 3 chosen brainrots at once.</p>
+    <div class="row">
+      <div class="field">
+        <label>Code Name</label>
+        <input id="tc-codename" placeholder="e.g. TRIPLE2025" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+      <div class="field">
+        <label>Bundle Name <span style="color:var(--muted);font-weight:400">(shown on claim — e.g. "Starter Pack")</span></label>
+        <input id="tc-bundlename" placeholder="e.g. Starter Pack"/>
+      </div>
+      <div class="field" style="max-width:180px">
+        <label>Limited Uses <span style="color:var(--muted);font-weight:400">(blank = unlimited)</span></label>
+        <input id="tc-uses" type="number" min="1" placeholder="e.g. 100"/>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Brainrot 1</label>
+        <div class="searchable-dropdown">
+          <input id="tc-brainrot1" placeholder="Type to search..." autocomplete="off"
+            oninput="filterDropdown('tc-brainrot1','tc-brainrot1-list')"
+            onfocus="showDropdown('tc-brainrot1-list')"
+            onblur="hideDropdown('tc-brainrot1-list')"/>
+          <div class="dropdown-list" id="tc-brainrot1-list"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Brainrot 2</label>
+        <div class="searchable-dropdown">
+          <input id="tc-brainrot2" placeholder="Type to search..." autocomplete="off"
+            oninput="filterDropdown('tc-brainrot2','tc-brainrot2-list')"
+            onfocus="showDropdown('tc-brainrot2-list')"
+            onblur="hideDropdown('tc-brainrot2-list')"/>
+          <div class="dropdown-list" id="tc-brainrot2-list"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Brainrot 3</label>
+        <div class="searchable-dropdown">
+          <input id="tc-brainrot3" placeholder="Type to search..." autocomplete="off"
+            oninput="filterDropdown('tc-brainrot3','tc-brainrot3-list')"
+            onfocus="showDropdown('tc-brainrot3-list')"
+            onblur="hideDropdown('tc-brainrot3-list')"/>
+          <div class="dropdown-list" id="tc-brainrot3-list"></div>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-warn" onclick="runCreateTripleCode()">🧠 Create Triple Code</button>
+    <div class="result-box" id="tc-create-result"></div>
+  </div>
+
+  <!-- Active codes table -->
+  <div class="card">
+    <h2>📋 Active Codes <button class="btn btn-ghost" style="padding:4px 12px;font-size:12px" onclick="loadRedeemCodes()">↻ Refresh</button></h2>
+    <div id="rc-table-wrap">
+      <table>
+        <thead><tr><th>Code</th><th>Brainrot(s)</th><th>Uses Left</th><th>Used</th><th>Created</th><th></th></tr></thead>
+        <tbody id="rc-tbody"><tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px">Loading...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="result-box" id="rc-delete-result"></div>
+  </div>
+
+  <!-- How it works -->
+  <div class="card" style="border-color:rgba(124,92,252,.3)">
+    <h2>ℹ️ How it works</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7">
+      1. <strong>Create Code</strong> — amount is always <strong>1</strong> brainrot per redeem.<br>
+      2. <strong>Triple Code</strong> — player receives all <strong>3 chosen brainrots</strong> when they redeem the code.<br>
+      3. The game server polls <code>GET /roblox/redeem-codes</code> to keep its local list in sync.<br>
+      4. When a player types the code in-game, the game calls <code>POST /roblox/use-redeemcode</code> to record the use.<br>
+      5. If the code has <strong>limited uses</strong>, it auto-deletes once fully exhausted.<br>
+      6. Mutations are rolled by the game at redemption time (Normal 35 · Gold 30 · Diamond 15 · Rainbow 3).
+    </p>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+// ── Login Gate ──────────────────────────────────────────────────────────────
+// Admins: enter their handle + plaintext admin password → full panel access.
+// Regular users: enter their Discord ID + their account password → RNG-only.
+// pairs.json keys are Discord IDs; passwordHash is SHA-256 of their password.
+const ADMIN_CREDENTIALS = {
+  'urbuddy1102':      'K_koolio_K',
+  'placeholderadmin': 'K_koolio_K'
+};
+
+let _pairsCache = null;
+let _loggedInRobloxUsername = null; // set on successful regular-user login
+
+async function loadPairs() {
+  if (_pairsCache) return _pairsCache;
+  try {
+    const res = await fetch('/pairs.json');
+    if (!res.ok) throw new Error('not found');
+    _pairsCache = await res.json();
+    return _pairsCache;
+  } catch (e) {
+    console.warn('Could not load pairs.json:', e.message);
+    return {};
+  }
+}
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function attemptLogin() {
+  const user   = document.getElementById('login-user').value.trim();
+  const pass   = document.getElementById('login-pass').value;
+  const errEl  = document.getElementById('login-error');
+  const rngBox = document.getElementById('rng-box');
+
+  errEl.classList.remove('show');
+  rngBox.style.display = 'none';
+  _loggedInRobloxUsername = null;
+
+  if (!user || !pass) { errEl.classList.add('show'); return; }
+
+  // 1️⃣ Admin path — plaintext password check, bypasses pairs.json
+  const adminPass = ADMIN_CREDENTIALS[user.toLowerCase()];
+  if (adminPass !== undefined) {
+    if (pass === adminPass) {
+      document.getElementById('login-overlay').classList.add('hidden');
+      document.getElementById('layout').classList.add('show');
+    } else {
+      errEl.classList.add('show'); // wrong admin password — hard deny, no RNG
+    }
+    return;
+  }
+
+  // 2️⃣ Regular user path — Discord ID (exact) + SHA-256 password
+  const pairs = await loadPairs();
+  const entry = pairs[user];
+  if (entry && entry.passwordHash) {
+    const hash = await sha256(pass);
+    if (hash === entry.passwordHash) {
+      _loggedInRobloxUsername = entry.robloxUsername;
+      rngBox.style.display = 'block';
+      document.getElementById('rng-result').style.display = 'none';
+      document.getElementById('rng-msg').classList.remove('show');
+      return;
+    }
+  }
+
+  // 3️⃣ No match — deny
+  errEl.classList.add('show');
+}
+
+// ── RNG Roll (fallback for non-admin login attempts) ─────────────────────────
+let rngRolledAnimal = null;
+
+async function rollRNG() {
+  const msgEl = document.getElementById('rng-msg');
+  msgEl.classList.remove('show');
+  document.getElementById('rng-result').style.display = 'none';
+  try {
+    const data = await fetch('/api/rollable').then(r => r.json());
+    const animals = data.animals || [];
+    if (!animals.length) {
+      msgEl.textContent = '❌ No animals available to roll.';
+      msgEl.className = 'result-box show error';
+      return;
+    }
+    rngRolledAnimal = animals[Math.floor(Math.random() * animals.length)];
+    document.getElementById('rng-animal-name').textContent = `🎉 You rolled: ${rngRolledAnimal}`;
+    document.getElementById('rng-result').style.display = 'block';
+  } catch (e) {
+    msgEl.textContent = `❌ ${e.message}`;
+    msgEl.className = 'result-box show error';
+  }
+}
+
+async function claimRNG() {
+  const username = _loggedInRobloxUsername;
+  const msgEl = document.getElementById('rng-msg');
+  if (!username || !rngRolledAnimal) return;
+  const claimBtn = document.getElementById('rng-claim-btn');
+  claimBtn.disabled = true;
+  try {
+    const data = await fetch('/api/admin/give', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, animal: rngRolledAnimal, mutation: null, traits: [] })
+    }).then(async r => {
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || d.message || 'Request failed');
+      return d;
+    });
+    msgEl.textContent = `✅ ${data.message}`;
+    msgEl.className = 'result-box show';
+    claimBtn.textContent = '✅ Claimed!';
+  } catch (e) {
+    msgEl.textContent = `❌ ${e.message}`;
+    msgEl.className = 'result-box show error';
+    claimBtn.disabled = false;
+  }
+}
+
+// Allow pressing Enter on either login field to submit
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') attemptLogin(); });
+document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') attemptLogin(); });
+
+// Preload pairs.json so login is instant
+loadPairs();
+
+// ── Navigation ──────────────────────────────────────────────────────────────
+function goto(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page)?.classList.add('active');
+  if (page === 'redeemcodes') loadRedeemCodes();
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── Result box ───────────────────────────────────────────────────────────────
+function showResult(id, msg, isError = false) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'result-box show' + (isError ? ' error' : '');
+}
+
+// ── API helper ────────────────────────────────────────────────────────────────
+async function api(path, body = null, method = null) {
+  let opts;
+  if (body && method === 'DELETE') {
+    opts = { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+  } else if (body) {
+    opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+  } else {
+    opts = { method: method || 'GET' };
+  }
+  const res = await fetch(path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || data.message || 'Request failed');
+  return data;
+}
+
+// ── Dashboard stats ──────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const [status, rollable, players] = await Promise.all([
+      fetch('/api/status').then(r => r.json()),
+      fetch('/api/rollable').then(r => r.json()),
+      fetch('/api/players-in-game').then(r => r.json()),
+    ]);
+    document.getElementById('stat-players').textContent  = players.count ?? '?';
+    document.getElementById('stat-animals').textContent  = status.ready ? status.totalAnimals : '—';
+    document.getElementById('stat-cache-age').textContent = status.ready
+      ? new Date(status.builtAt).toLocaleDateString() : 'None';
+    document.getElementById('stat-rollable').textContent = rollable.animals?.length ?? '?';
+
+    const list = document.getElementById('players-list');
+    if (!players.players?.length) {
+      list.textContent = 'No players currently in-game.';
+    } else {
+      list.innerHTML = players.players.map(p =>
+        `<span class="dot dot-green" style="margin-right:6px"></span>${p}`
+      ).join('<br/>');
+    }
+  } catch(e) {
+    document.getElementById('players-list').textContent = 'Failed to load player list.';
+  }
+}
+loadStats();
+setInterval(loadStats, 10000);
+
+// ── Give ─────────────────────────────────────────────────────────────────────
+async function runGive() {
+  const username = document.getElementById('give-user').value.trim();
+  const animal   = document.getElementById('give-animal').value.trim();
+  const mutation = document.getElementById('give-mutation').value.trim() || null;
+  const traitsRaw= document.getElementById('give-traits').value.trim();
+  const traits   = traitsRaw ? traitsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  if (!username || !animal) return toast('Username and brainrot name are required.', 'error');
+  try {
+    const data = await api('/api/admin/give', { username, animal, mutation, traits });
+    showResult('give-result', `✅ ${data.message}`);
+    toast('Brainrot given!', 'success');
+  } catch(e) { showResult('give-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── View Base ────────────────────────────────────────────────────────────────
+async function runViewBase() {
+  const username = document.getElementById('vb-user').value.trim();
+  if (!username) return toast('Username required.', 'error');
+  showResult('vb-result', 'Loading...');
+  document.getElementById('vb-table-card').style.display = 'none';
+  try {
+    const data = await api(`/api/admin/viewbase?username=${encodeURIComponent(username)}`);
+    document.getElementById('vb-result').classList.remove('show');
+    const tbody = document.querySelector('#vb-table tbody');
+    tbody.innerHTML = '';
+    data.animals.forEach((a, i) => {
+      const tr = document.createElement('tr');
+      const mut   = a.mutation ? `<span class="tag tag-purple">${a.mutation}</span>` : '<span style="color:var(--muted)">—</span>';
+      const traits = a.traits?.length
+        ? a.traits.map(t => `<span class="tag tag-green" style="margin-right:3px">${t}</span>`).join('')
+        : '<span style="color:var(--muted)">—</span>';
+      tr.innerHTML = `<td>${i+1}</td><td><strong>${a.name}</strong></td><td>${mut}</td><td>${traits}</td>`;
+      tbody.appendChild(tr);
+    });
+    document.getElementById('vb-table-card').style.display = 'block';
+    toast(`Loaded ${data.animals.length} brainrot(s)`, 'success');
+  } catch(e) { showResult('vb-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── Edit Brainrot ────────────────────────────────────────────────────────────
+async function runEditBrainrot() {
+  const username  = document.getElementById('eb-user').value.trim();
+  const animal    = document.getElementById('eb-animal').value.trim();
+  const mutation  = document.getElementById('eb-mutation').value.trim() || null;
+  const traitsRaw = document.getElementById('eb-traits').value.trim();
+  const traits    = traitsRaw ? traitsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  if (!username || !animal) return toast('Username and brainrot name are required.', 'error');
+  try {
+    const data = await api('/api/admin/editbrainrot', { username, animal, mutation, traits });
+    showResult('eb-result', `✅ ${data.message}`);
+    toast('Brainrot edited!', 'success');
+  } catch(e) { showResult('eb-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── Sign Animal ──────────────────────────────────────────────────────────────
+async function runSignAnimal() {
+  const username = document.getElementById('sa-user').value.trim();
+  const animal   = document.getElementById('sa-animal').value.trim();
+  if (!username || !animal) return toast('Username and brainrot name are required.', 'error');
+  try {
+    const data = await api('/api/admin/signanimal', { username, animal });
+    showResult('sa-result', `✅ ${data.message}`);
+    toast('Animal signed!', 'success');
+  } catch(e) { showResult('sa-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── Troll ────────────────────────────────────────────────────────────────────
+async function runTroll() {
+  const username = document.getElementById('troll-user').value.trim();
+  const duration = parseInt(document.getElementById('troll-dur').value) || 30;
+  const animal   = document.getElementById('troll-animal').value.trim() || 'Noobini Pizzanini';
+  if (!username) return toast('Username required.', 'error');
+  try {
+    const data = await api('/api/admin/troll', { username, duration, animal });
+    showResult('troll-result', `✅ ${data.message}`);
+    toast('Troll queued!', 'success');
+  } catch(e) { showResult('troll-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── TraitTime ────────────────────────────────────────────────────────────────
+async function runTraitTime() {
+  const amount = parseInt(document.getElementById('tt-amount').value);
+  if (!amount || amount < 1) return toast('Enter a valid duration.', 'error');
+  try {
+    const data = await api('/api/admin/traittime', { amount });
+    showResult('tt-result', `✅ ${data.message}`);
+    toast('TraitTime activated!', 'success');
+  } catch(e) { showResult('tt-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── LuckTime ─────────────────────────────────────────────────────────────────
+async function runLuckTime() {
+  const amount = parseInt(document.getElementById('lt-amount').value);
+  if (!amount || amount < 1) return toast('Enter a valid duration.', 'error');
+  try {
+    const data = await api('/api/admin/lucktime', { amount });
+    showResult('lt-result', `✅ ${data.message}`);
+    toast('LuckTime activated!', 'success');
+  } catch(e) { showResult('lt-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── Announce ─────────────────────────────────────────────────────────────────
+async function runAnnounce() {
+  const message = document.getElementById('ann-msg').value.trim();
+  if (!message) return toast('Message is required.', 'error');
+  try {
+    const data = await api('/api/admin/announce', { message });
+    showResult('ann-result', `✅ ${data.message}`);
+    toast('Announcement sent!', 'success');
+  } catch(e) { showResult('ann-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── Rebuild Cache ─────────────────────────────────────────────────────────────
+async function runRebuildCache() {
+  try {
+    showResult('rc-result', '⏳ Rebuild triggered — this may take several minutes. Check server logs for progress.');
+    const data = await api('/api/admin/rebuildcache', {});
+    showResult('rc-result', `✅ ${data.message}`);
+    toast('Cache rebuild started!', 'success');
+  } catch(e) { showResult('rc-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── Brainrot Counts ──────────────────────────────────────────────────────────
+async function runBrainrotCounts() {
+  const name = document.getElementById('bc-name').value.trim();
+  if (!name) return toast('Brainrot name required.', 'error');
+  showResult('bc-result', 'Loading...');
+  document.getElementById('bc-detail').style.display = 'none';
+  try {
+    const data = await api(`/api/brainrot?name=${encodeURIComponent(name)}`);
+    document.getElementById('bc-result').classList.remove('show');
+    document.getElementById('bc-title').textContent = `${name} — Total: ${data.totalCount}`;
+    const mutTbody = document.querySelector('#bc-mut-table tbody');
+    const traitTbody = document.querySelector('#bc-trait-table tbody');
+    mutTbody.innerHTML = '';
+    traitTbody.innerHTML = '';
+    for (const [m, c] of Object.entries(data.mutationCounts || {}).sort((a,b)=>b[1]-a[1])) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${m}</td><td><strong>${c}</strong></td>`;
+      mutTbody.appendChild(tr);
+    }
+    for (const [t, c] of Object.entries(data.traitCounts || {}).sort((a,b)=>b[1]-a[1])) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${t}</td><td><strong>${c}</strong></td>`;
+      traitTbody.appendChild(tr);
+    }
+    document.getElementById('bc-detail').style.display = 'block';
+    toast('Loaded!', 'success');
+  } catch(e) { showResult('bc-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── Rollable ─────────────────────────────────────────────────────────────────
+async function loadRollable() {
+  try {
+    const data = await api('/api/rollable');
+    const animals = data.animals || [];
+    const el = document.getElementById('rollable-list');
+    if (!animals.length) { el.textContent = 'No animals in rollable list.'; return; }
+    el.innerHTML = animals.map((a, i) =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span>${i+1}. ${a}</span>
+        <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="removeRollable('${a.replace(/'/g,"\\'")}')">✕ Remove</button>
+      </div>`
+    ).join('');
+  } catch(e) { document.getElementById('rollable-list').textContent = 'Failed to load.'; }
+}
+
+async function addRollable() {
+  const name = document.getElementById('rollable-add-name').value.trim();
+  if (!name) return toast('Animal name required.', 'error');
+  try {
+    const data = await api('/api/admin/rollable/add', { name });
+    showResult('rollable-result', `✅ ${data.message}`);
+    toast('Added!', 'success');
+    loadRollable();
+    document.getElementById('rollable-add-name').value = '';
+  } catch(e) { showResult('rollable-result', `❌ ${e.message}`, true); }
+}
+
+async function removeRollable(name) {
+  try {
+    await api('/api/admin/rollable/remove', { name });
+    toast(`Removed "${name}"`, 'success');
+    loadRollable();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── DLC Code ─────────────────────────────────────────────────────────────────
+async function runDLCCode() {
+  const username = document.getElementById('dlc-user').value.trim();
+  if (!username) return toast('Username required.', 'error');
+  try {
+    const data = await api('/api/admin/dlccode', { username });
+    showResult('dlc-result', `✅ Code generated!\n\nCode: ${data.code}\nTier: ${data.tier}\nBrainrot: ${data.brainrot}\nMutation: ${data.mutation || 'None'}`);
+    toast('DLC Code generated!', 'success');
+  } catch(e) { showResult('dlc-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── DLC Redeem ────────────────────────────────────────────────────────────────
+async function runDLCRedeem() {
+  const username = document.getElementById('dlcr-user').value.trim();
+  const code     = document.getElementById('dlcr-code').value.trim().toUpperCase();
+  if (!username || !code) return toast('Username and code are required.', 'error');
+  try {
+    const data = await api('/api/admin/dlcredeem', { username, code });
+    showResult('dlcr-result', `✅ ${data.message}`);
+    toast('Code redeemed!', 'success');
+  } catch(e) { showResult('dlcr-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── DM ────────────────────────────────────────────────────────────────────────
+async function runDM() {
+  const userId  = document.getElementById('dm-user').value.trim();
+  const message = document.getElementById('dm-msg').value.trim();
+  if (!userId || !message) return toast('User ID and message are required.', 'error');
+  try {
+    const data = await api('/api/admin/dm', { userId, message });
+    showResult('dm-result', `✅ ${data.message}`);
+    toast('DM sent!', 'success');
+  } catch(e) { showResult('dm-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── Fake Spawn ───────────────────────────────────────────────────────────────
+async function runFakeSpawn() {
+  const jobId    = document.getElementById('fs-user').value.trim();
+  const animal   = document.getElementById('fs-animal').value.trim();
+  const fakeType = document.getElementById('fs-faketype').value; // 'fake1' or 'fake2'
+  if (!jobId || !animal) return toast('Job ID and brainrot name are required.', 'error');
+  try {
+    const data = await api('/api/admin/fakespawn', { jobId, animal, fakeType });
+    showResult('fs-result', `✅ ${data.message}`);
+    toast('Fake spawn queued!', 'success');
+  } catch(e) { showResult('fs-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+function buildAnnounceText() {
+  const rawText  = document.getElementById('an-text').value.trim();
+  const prefix   = document.getElementById('an-prefix').value.trim();
+  const gradient = document.getElementById('an-gradient').value.toLowerCase();
+  if (!rawText) return '';
+  if (gradient && prefix) return `<${gradient}>${prefix}:</${gradient}> ${rawText}`;
+  if (gradient) return `<${gradient}>${rawText}</${gradient}>`;
+  if (prefix) return `${prefix}: ${rawText}`;
+  return rawText;
+}
+
+function updateAnnouncePreview() {
+  const text = buildAnnounceText();
+  const preview = document.getElementById('an-preview');
+  const previewText = document.getElementById('an-preview-text');
+  if (text) {
+    preview.style.display = 'block';
+    previewText.textContent = text;
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+async function runRemoteAnnounce() {
+  const jobId = document.getElementById('an-jobid').value.trim();
+  const text  = buildAnnounceText();
+  if (!jobId || !text) return toast('Job ID and announcement text are required.', 'error');
+  try {
+    const data = await api('/api/admin/remote-announce', { jobId, text });
+    showResult('an-result', `✅ ${data.message}`);
+    toast('Announcement queued!', 'success');
+  } catch(e) { showResult('an-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+async function runRemoteSpawn() {
+  const jobId    = document.getElementById('rs-jobid').value.trim();
+  const animal   = document.getElementById('rs-animal').value.trim();
+  const mutation = document.getElementById('rs-mutation').value.trim() || null;
+  const traitsRaw= document.getElementById('rs-traits').value.trim();
+  const traits   = traitsRaw ? traitsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  if (!jobId || !animal) return toast('Job ID and brainrot name are required.', 'error');
+  try {
+    const data = await api('/api/admin/remote-spawn', { jobId, animal, mutation, traits });
+    showResult('rs-result', `✅ ${data.message}`);
+    toast('Remote spawn queued!', 'success');
+  } catch(e) { showResult('rs-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+async function runRemoteEvent() {
+  const jobId     = document.getElementById('re-jobid').value.trim();
+  const eventName = document.getElementById('re-eventname').value;
+  if (!jobId || !eventName) return toast('Job ID and event name are required.', 'error');
+  try {
+    const data = await api('/api/admin/remote-event', { jobId, eventName });
+    showResult('re-result', `✅ ${data.message}`);
+    toast('Event queued!', 'success');
+  } catch(e) { showResult('re-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+async function runFreezebrainrot() {
+  const jobId  = document.getElementById('frz-jobid').value.trim();
+  const animal = document.getElementById('frz-animal').value.trim();
+  const freeze = document.getElementById('frz-freeze').value;
+  if (!jobId || !animal) return toast('Job ID and brainrot name are required.', 'error');
+  try {
+    const data = await api('/api/admin/freeze-brainrot', { jobId, animal, freeze: freeze === 'true' });
+    showResult('frz-result', `✅ ${data.message}`);
+    toast('Freeze command queued!', 'success');
+  } catch(e) { showResult('frz-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+async function runGiveItem() {
+  const jobId    = document.getElementById('gi-jobid').value.trim();
+  const username = document.getElementById('gi-user').value.trim();
+  const item     = document.getElementById('gi-item').value.trim();
+  if (!jobId || !username || !item) return toast('Job ID, username, and item name are required.', 'error');
+  try {
+    const data = await api('/api/admin/give-item', { jobId, username, item });
+    showResult('gi-result', `✅ ${data.message}`);
+    toast('Give item queued!', 'success');
+  } catch(e) { showResult('gi-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+async function runForceSpeed() {
+  const jobId    = document.getElementById('spd-jobid').value.trim();
+  const username = document.getElementById('spd-user').value.trim();
+  const speed    = parseFloat(document.getElementById('spd-speed').value);
+  if (!jobId || !username || isNaN(speed)) return toast('Job ID, username, and speed are required.', 'error');
+  try {
+    const data = await api('/api/admin/force-speed', { jobId, username, speed });
+    showResult('spd-result', `✅ ${data.message}`);
+    toast(speed === 0 ? 'Speed override disabled!' : `Speed set to ${speed}!`, 'success');
+  } catch(e) { showResult('spd-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+async function runPoofRoad() {
+  const jobId = document.getElementById('pr-jobid').value.trim();
+  if (!jobId) return toast('Server Job ID is required.', 'error');
+  try {
+    const data = await api('/api/admin/poof-road', { jobId });
+    showResult('pr-result', `✅ ${data.message}`);
+    toast('Poof road queued!', 'success');
+  } catch(e) { showResult('pr-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+async function runPlaySound() {
+  const jobId   = document.getElementById('ps-jobid').value.trim();
+  const soundId = document.getElementById('ps-soundid').value.trim();
+  if (!jobId || !soundId) return toast('Job ID and Sound Asset ID are required.', 'error');
+  try {
+    const data = await api('/api/admin/play-sound', { jobId, soundId });
+    showResult('ps-result', `✅ ${data.message}`);
+    toast('Sound queued!', 'success');
+  } catch(e) { showResult('ps-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+// ── Load rollable on page load ────────────────────────────────────────────────
+loadRollable();
+
+// ── Searchable Dropdown System ────────────────────────────────────────────────
+let _allAnimals = [];
+
+async function loadAnimalsForDropdowns() {
+  try {
+    const data = await fetch('/api/animals').then(r => r.json());
+    _allAnimals = data.names || [];
+    populateDropdown('eb-animal-list', _allAnimals);
+    populateDropdown('sa-animal-list', _allAnimals);
+    populateDropdown('fs-animal-list', _allAnimals);
+    populateDropdown('rs-animal-list', _allAnimals);
+    populateDropdown('frz-animal-list', _allAnimals);
+    populateDropdown('rc-brainrot-list', _allAnimals);
+    populateDropdown('tc-brainrot1-list', _allAnimals);
+    populateDropdown('tc-brainrot2-list', _allAnimals);
+    populateDropdown('tc-brainrot3-list', _allAnimals);
+  } catch(e) {
+    console.warn('Could not load animal list for dropdowns:', e.message);
+  }
+}
+
+function populateDropdown(listId, names) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  list.innerHTML = '';
+  if (!names.length) {
+    list.innerHTML = '<div class="dropdown-item no-match">No animals in cache yet</div>';
+    return;
+  }
+  for (const name of names) {
+    const div = document.createElement('div');
+    div.className = 'dropdown-item';
+    div.textContent = name;
+    div.addEventListener('mousedown', e => {
+      e.preventDefault(); // prevent blur before click
+      const inputId = listId.replace('-list', '');
+      document.getElementById(inputId).value = name;
+      list.classList.remove('open');
+    });
+    list.appendChild(div);
+  }
+}
+
+function filterDropdown(inputId, listId) {
+  const query = document.getElementById(inputId).value.toLowerCase();
+  const list  = document.getElementById(listId);
+  list.classList.add('open');
+  const items = list.querySelectorAll('.dropdown-item:not(.no-match)');
+  let visible = 0;
+  items.forEach(item => {
+    const match = item.textContent.toLowerCase().includes(query);
+    item.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  // Show a no-match item if nothing visible
+  let noMatch = list.querySelector('.no-match');
+  if (!visible) {
+    if (!noMatch) {
+      noMatch = document.createElement('div');
+      noMatch.className = 'dropdown-item no-match';
+      list.appendChild(noMatch);
+    }
+    noMatch.textContent = query ? `No match for "${query}"` : 'No animals in cache';
+    noMatch.style.display = '';
+  } else if (noMatch) {
+    noMatch.style.display = 'none';
+  }
+}
+
+function showDropdown(listId) {
+  const list = document.getElementById(listId);
+  if (list) list.classList.add('open');
+}
+
+function hideDropdown(listId) {
+  // Small delay so mousedown on an item fires before blur hides the list
+  setTimeout(() => {
+    const list = document.getElementById(listId);
+    if (list) list.classList.remove('open');
+  }, 150);
+}
+
+loadAnimalsForDropdowns();
+
+// ── Redeem Codes ──────────────────────────────────────────────────────────────
+async function loadRedeemCodes() {
+  const tbody = document.getElementById('rc-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px">Loading...</td></tr>';
+  try {
+    const data = await api('/api/admin/listredeemcodes');
+    const codes = data.codes || [];
+    if (!codes.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:20px">No active codes.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = '';
+    for (const c of codes) {
+      const usesLeft = c.limitedUses ? Math.max(0, c.limitedUses - c.usedCount) : '∞';
+      const usesLeftTag = c.limitedUses
+        ? `<span class="tag ${usesLeft === 0 ? 'tag-red' : usesLeft <= 5 ? 'tag-orange' : 'tag-green'}">${usesLeft}</span>`
+        : '<span class="tag tag-purple">∞</span>';
+      const brainrotDisplay = Array.isArray(c.brainrotNames)
+        ? `<span class="tag tag-orange" style="margin-right:4px">📦 ${c.bundleName || 'Triple'}</span>` +
+          c.brainrotNames.map(n => `<span class="tag tag-purple" style="margin-right:3px">${n}</span>`).join('')
+        : c.brainrotName;
+      const createdDate = c.createdAt ? new Date(c.createdAt).toLocaleString() : '—';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><code style="color:var(--accent);font-size:13px">${c.name}</code></td>
+        <td>${brainrotDisplay}</td>
+        <td>${usesLeftTag}</td>
+        <td style="color:var(--muted)">${c.usedCount}</td>
+        <td style="color:var(--muted);font-size:12px">${createdDate}</td>
+        <td><button class="btn btn-danger" style="padding:5px 12px;font-size:12px" onclick="runDeleteRedeemCode('${c.name}')">🗑 Delete</button></td>`;
+      tbody.appendChild(tr);
+    }
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--danger);text-align:center;padding:20px">${e.message}</td></tr>`;
+  }
+}
+
+async function runCreateRedeemCode() {
+  const codeName    = document.getElementById('rc-codename').value.trim().toUpperCase();
+  const brainrot    = document.getElementById('rc-brainrot').value.trim();
+  const limitedUses = document.getElementById('rc-uses').value.trim();
+  if (!codeName)  return toast('Code name is required.', 'error');
+  if (!brainrot)  return toast('Brainrot name is required.', 'error');
+  try {
+    const data = await api('/api/admin/createredeemcode', { codeName, brainrotName: brainrot, limitedUses: limitedUses || null });
+    showResult('rc-create-result', `✅ ${data.message}`);
+    toast('Code created!', 'success');
+    document.getElementById('rc-codename').value = '';
+    document.getElementById('rc-brainrot').value = '';
+    document.getElementById('rc-uses').value = '';
+    loadRedeemCodes();
+  } catch(e) { showResult('rc-create-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+async function runCreateTripleCode() {
+  const codeName    = document.getElementById('tc-codename').value.trim().toUpperCase();
+  const bundleName  = document.getElementById('tc-bundlename').value.trim();
+  const brainrot1   = document.getElementById('tc-brainrot1').value.trim();
+  const brainrot2   = document.getElementById('tc-brainrot2').value.trim();
+  const brainrot3   = document.getElementById('tc-brainrot3').value.trim();
+  const limitedUses = document.getElementById('tc-uses').value.trim();
+  if (!codeName)   return toast('Code name is required.', 'error');
+  if (!brainrot1)  return toast('Brainrot 1 is required.', 'error');
+  if (!brainrot2)  return toast('Brainrot 2 is required.', 'error');
+  if (!brainrot3)  return toast('Brainrot 3 is required.', 'error');
+  try {
+    const data = await api('/api/admin/createtriplecode', {
+      codeName,
+      bundleName: bundleName || null,
+      brainrotNames: [brainrot1, brainrot2, brainrot3],
+      limitedUses: limitedUses || null
+    });
+    showResult('tc-create-result', `✅ ${data.message}`);
+    toast('Triple code created!', 'success');
+    document.getElementById('tc-codename').value = '';
+    document.getElementById('tc-bundlename').value = '';
+    document.getElementById('tc-brainrot1').value = '';
+    document.getElementById('tc-brainrot2').value = '';
+    document.getElementById('tc-brainrot3').value = '';
+    document.getElementById('tc-uses').value = '';
+    loadRedeemCodes();
+  } catch(e) { showResult('tc-create-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+async function runDeleteRedeemCode(codeName) {
+  if (!confirm(`Delete code "${codeName}"? This cannot be undone.`)) return;
+  try {
+    const data = await api('/api/admin/deleteredeemcode', { codeName }, 'DELETE');
+    showResult('rc-delete-result', `✅ ${data.message}`);
+    toast(`Code "${codeName}" deleted.`, 'success');
+    loadRedeemCodes();
+  } catch(e) { showResult('rc-delete-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+</script>
+</body>
+</html>
