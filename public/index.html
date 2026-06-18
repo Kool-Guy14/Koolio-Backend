@@ -365,10 +365,10 @@
 <!-- FREEZE BRAINROT -->
 <div class="page" id="page-freezebrainrot">
   <h1>🥶 Freeze Brainrot</h1>
-  <p class="subtitle">Freeze or unfreeze a specific brainrot on the road in a target server by Job ID.</p>
+  <p class="subtitle">Freeze or unfreeze a specific brainrot on the road in whichever server a given player is currently in.</p>
   <div class="card">
     <div class="row">
-      <div class="field"><label>Server Job ID</label><input id="frz-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field"><label>Roblox Username</label><input id="frz-user" placeholder="e.g. Builderman"/></div>
       <div class="field">
         <label>Brainrot Name</label>
         <div class="searchable-dropdown">
@@ -390,7 +390,7 @@
   <div class="card" style="border-color:rgba(124,92,252,.3)">
     <h2>ℹ️ How it works</h2>
     <p style="font-size:13px;color:var(--muted);line-height:1.7">
-      Targets a specific server by <strong>Job ID</strong> and sets <code>ForceIdle</code> on all matching brainrots on the road.<br>
+      Looks up the <strong>Job ID</strong> of whichever server that username is currently in (no need to find it yourself) and sets <code>ForceIdle</code> on all matching brainrots on the road.<br>
       <strong>Freeze</strong> stops them in place. <strong>Unfreeze</strong> lets them resume movement.<br>
       Only affects brainrots currently on the road — not ones in player bases.
     </p>
@@ -400,10 +400,9 @@
 <!-- GIVE ITEM -->
 <div class="page" id="page-giveitem">
   <h1>🎒 Give Item</h1>
-  <p class="subtitle">Give a tool/item to a player currently in a specific server by Job ID.</p>
+  <p class="subtitle">Give a tool/item to a player currently in-game — just type their username, no need to find the server yourself.</p>
   <div class="card">
     <div class="row">
-      <div class="field"><label>Server Job ID</label><input id="gi-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
       <div class="field"><label>Roblox Username</label><input id="gi-user" placeholder="e.g. Builderman"/></div>
       <div class="field"><label>Item Name</label><input id="gi-item" placeholder="e.g. Flying Carpet"/></div>
     </div>
@@ -413,7 +412,7 @@
   <div class="card" style="border-color:rgba(62,207,142,.3)">
     <h2>ℹ️ How it works</h2>
     <p style="font-size:13px;color:var(--muted);line-height:1.7">
-      Targets a player by username on a specific server and clones the named tool from <code>ReplicatedStorage.Items</code> into their Backpack.<br>
+      Automatically finds whichever server that username is currently in and clones the named tool from <code>ReplicatedStorage.Items</code> into their Backpack.<br>
       The player must be <strong>currently in-game</strong> on that server for this to work.
     </p>
   </div>
@@ -425,7 +424,6 @@
   <p class="subtitle">Force a player's WalkSpeed to a specific value in a target server. Set to 0 to disable.</p>
   <div class="card">
     <div class="row">
-      <div class="field"><label>Server Job ID</label><input id="spd-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
       <div class="field"><label>Roblox Username</label><input id="spd-user" placeholder="e.g. Builderman"/></div>
       <div class="field" style="max-width:180px"><label>Speed (0 = disable)</label><input id="spd-speed" type="number" placeholder="16" min="0" max="9999"/></div>
     </div>
@@ -568,10 +566,10 @@
 <!-- FAKE SPAWN -->
 <div class="page" id="page-fakespawn">
   <h1>👻 Fake Spawn</h1>
-  <p class="subtitle">Spawn a fake brainrot on a server's road. When collected it poofs — no reward given. Rolls 15% Gold / 10% Diamond / 5% Rainbow mutation automatically.</p>
+  <p class="subtitle">Spawn a fake brainrot on the road in whichever server a given player is currently in. When collected it poofs — no reward given. Rolls 15% Gold / 10% Diamond / 5% Rainbow mutation automatically.</p>
   <div class="card">
     <div class="row">
-      <div class="field"><label>Server Job ID</label><input id="fs-user" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field"><label>Roblox Username</label><input id="fs-username" placeholder="e.g. Builderman"/></div>
       <div class="field">
         <label>Brainrot Name (appears on road)</label>
         <div class="searchable-dropdown" id="fs-animal-wrap">
@@ -596,7 +594,7 @@
   <div class="card" style="border-color:rgba(252,92,92,.3)">
     <h2>⚠️ How it works</h2>
     <p style="font-size:13px;color:var(--muted);line-height:1.7">
-      1. Enter the <strong>Job ID</strong> of the server you want to target.<br>
+      1. Enter a <strong>Roblox username</strong> of anyone currently in the server you want to target — the server is found automatically.<br>
       2. Choose a fake type: <strong>Fake 1</strong> sets <code>IsFake</code> — the brainrot poofs the moment a player clicks it. <strong>Fake 2</strong> sets <code>iffake</code> — it appears to be collected normally and walks to the base, then poofs on arrival. <strong>Fake 3</strong> sets <code>FakeInBase</code> — it is collected into the base normally, then poofs once inside.<br>
       3. It has a <strong>15% Gold</strong>, <strong>10% Diamond</strong>, or <strong>5% Rainbow</strong> mutation rolled on delivery.<br>
       4. Either way it <strong>poofs</strong> with no brainrot and no reward.<br>
@@ -608,10 +606,10 @@
 <!-- REMOTE ANNOUNCE -->
 <div class="page" id="page-remoteannounce">
   <h1>📢 Remote Announce</h1>
-  <p class="subtitle">Send an in-game notification (toast popup) to everyone in a specific server, by Job ID.</p>
+  <p class="subtitle">Send an in-game notification (toast popup) to everyone in whichever server a given player is currently in.</p>
   <div class="card">
     <div class="row">
-      <div class="field"><label>Server Job ID</label><input id="an-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field"><label>Roblox Username</label><input id="an-user" placeholder="e.g. Builderman"/></div>
     </div>
     <div class="row">
       <div class="field"><label>Prefix <span style="font-weight:400;color:var(--muted)">(optional)</span></label><input id="an-prefix" placeholder="e.g. ADMIN" oninput="updateAnnouncePreview()"/></div>
@@ -647,10 +645,10 @@
 <!-- REMOTE SPAWN -->
 <div class="page" id="page-remotespawn">
   <h1>🎯 Remote Spawn</h1>
-  <p class="subtitle">Spawn a real brainrot on a server's road by Job ID. The next player who collects it gets it for real — no fake attributes.</p>
+  <p class="subtitle">Spawn a real brainrot on the road of whichever server a given player is currently in. The next player who collects it gets it for real — no fake attributes.</p>
   <div class="card">
     <div class="row">
-      <div class="field"><label>Server Job ID</label><input id="rs-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field"><label>Roblox Username</label><input id="rs-user" placeholder="e.g. Builderman"/></div>
       <div class="field">
         <label>Brainrot Name</label>
         <div class="searchable-dropdown" id="rs-animal-wrap">
@@ -669,7 +667,7 @@
   <div class="card" style="border-color:rgba(62,207,142,.3)">
     <h2>ℹ️ How it works</h2>
     <p style="font-size:13px;color:var(--muted);line-height:1.7">
-      1. Enter the <strong>Job ID</strong> of the target server.<br>
+      1. Enter a <strong>Roblox username</strong> of anyone currently in the server you want to target — the server is found automatically.<br>
       2. Choose the brainrot name, and optionally a mutation and/or traits.<br>
       3. The animal spawns on the road <strong>with real attributes</strong> — whoever collects it keeps it.<br>
       4. Only one remote spawn can be queued per server at a time — queueing another overwrites the previous.
@@ -680,10 +678,10 @@
 <!-- REMOTE EVENT -->
 <div class="page" id="page-remoteevent">
   <h1>⚡ Remote Event</h1>
-  <p class="subtitle">Trigger a named in-game event on a specific server by Job ID.</p>
+  <p class="subtitle">Trigger a named in-game event in whichever server a given player is currently in.</p>
   <div class="card">
     <div class="row">
-      <div class="field"><label>Server Job ID</label><input id="re-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field"><label>Roblox Username</label><input id="re-user" placeholder="e.g. Builderman"/></div>
       <div class="field">
         <label>Event Name</label>
         <select id="re-eventname">
@@ -782,7 +780,7 @@
   <div class="card" style="border-color:rgba(252,92,92,.3)">
     <h2>ℹ️ How it works</h2>
     <p style="font-size:13px;color:var(--muted);line-height:1.7">
-      1. Enter the <strong>Job ID</strong> of the target server.<br>
+      1. Enter a <strong>Roblox username</strong> of anyone currently in the server you want to target — the server is found automatically.<br>
       2. Select the event you want to fire from the dropdown.<br>
       3. The game server polls every 3 seconds and calls <code>EventService:ExecuteEvent</code> when it receives the queued event.<br>
       4. Only one event can be queued per server at a time — queueing another overwrites the previous.
@@ -792,11 +790,11 @@
 <!-- POOF ROAD -->
 <div class="page" id="page-poofroad">
   <h1>💥 Poof Road</h1>
-  <p class="subtitle">Instantly poof every brainrot currently walking the road in a target server — craft-spawn animals are skipped.</p>
+  <p class="subtitle">Instantly poof every brainrot currently walking the road in whichever server a given player is in — craft-spawn animals are skipped.</p>
   <div class="card">
     <div class="field" style="max-width:460px">
-      <label>Server Job ID</label>
-      <input id="pr-jobid" placeholder="e.g. 1234abcd-5678-efgh-..."/>
+      <label>Roblox Username</label>
+      <input id="pr-user" placeholder="e.g. Builderman"/>
     </div>
     <button class="btn btn-danger" onclick="runPoofRoad()">💥 Poof All Road Animals</button>
     <div class="result-box" id="pr-result"></div>
@@ -804,7 +802,7 @@
   <div class="card" style="border-color:rgba(252,92,92,.3)">
     <h2>ℹ️ How it works</h2>
     <p style="font-size:13px;color:var(--muted);line-height:1.7">
-      Targets a specific server by <strong>Job ID</strong>.<br>
+      Looks up whichever server that username is currently in automatically.<br>
       On the next poll cycle (≤3s), the game server iterates every model in <code>workspace.MovingAnimals</code>.<br>
       Each non-craft-spawn animal gets the <strong>Poof VFX fired to all clients</strong>, the <strong>poof sound</strong> played, and is then <strong>destroyed</strong>.<br>
       Animals that originated from the <strong>Craft Machine</strong> (<code>IsCraftSpawn = true</code>) are <strong>skipped</strong> and continue walking normally.<br>
@@ -816,10 +814,10 @@
 <!-- PLAY SOUND -->
 <div class="page" id="page-playsound">
   <h1>🔊 Play Sound</h1>
-  <p class="subtitle">Play a Roblox sound asset for all clients in a specific server by Job ID.</p>
+  <p class="subtitle">Play a Roblox sound asset for all clients in whichever server a given player is currently in.</p>
   <div class="card">
     <div class="row">
-      <div class="field"><label>Server Job ID</label><input id="ps-jobid" placeholder="e.g. 1234abcd-5678-..."/></div>
+      <div class="field"><label>Roblox Username</label><input id="ps-user" placeholder="e.g. Builderman"/></div>
       <div class="field"><label>Sound Asset ID</label><input id="ps-soundid" placeholder="e.g. 84435681380673" type="number" min="1"/></div>
     </div>
     <button class="btn btn-success" onclick="runPlaySound()">🔊 Play Sound</button>
@@ -828,7 +826,7 @@
   <div class="card" style="border-color:rgba(62,207,142,.3)">
     <h2>ℹ️ How it works</h2>
     <p style="font-size:13px;color:var(--muted);line-height:1.7">
-      1. Enter the <strong>Job ID</strong> of the target server.<br>
+      1. Enter a <strong>Roblox username</strong> of anyone currently in the server you want to target — the server is found automatically.<br>
       2. Enter the <strong>Roblox asset ID</strong> of the sound you want to play (numbers only — e.g. <code>84435681380673</code>).<br>
       3. On the next poll cycle (≤3s), the game server plays the sound for <strong>all clients</strong> in that server.<br>
       4. Only one sound command can be queued per server at a time — queueing another overwrites the previous.
@@ -1377,12 +1375,12 @@ async function runDM() {
 
 // ── Fake Spawn ───────────────────────────────────────────────────────────────
 async function runFakeSpawn() {
-  const jobId    = document.getElementById('fs-user').value.trim();
+  const username = document.getElementById('fs-username').value.trim();
   const animal   = document.getElementById('fs-animal').value.trim();
   const fakeType = document.getElementById('fs-faketype').value; // 'fake1' or 'fake2'
-  if (!jobId || !animal) return toast('Job ID and brainrot name are required.', 'error');
+  if (!username || !animal) return toast('Username and brainrot name are required.', 'error');
   try {
-    const data = await api('/api/admin/fakespawn', { jobId, animal, fakeType });
+    const data = await api('/api/admin/fakespawn', { username, animal, fakeType });
     showResult('fs-result', `✅ ${data.message}`);
     toast('Fake spawn queued!', 'success');
   } catch(e) { showResult('fs-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
@@ -1412,93 +1410,91 @@ function updateAnnouncePreview() {
 }
 
 async function runRemoteAnnounce() {
-  const jobId = document.getElementById('an-jobid').value.trim();
+  const username = document.getElementById('an-user').value.trim();
   const text  = buildAnnounceText();
-  if (!jobId || !text) return toast('Job ID and announcement text are required.', 'error');
+  if (!username || !text) return toast('Username and announcement text are required.', 'error');
   try {
-    const data = await api('/api/admin/remote-announce', { jobId, text });
+    const data = await api('/api/admin/remote-announce', { username, text });
     showResult('an-result', `✅ ${data.message}`);
     toast('Announcement queued!', 'success');
   } catch(e) { showResult('an-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
 }
 
 async function runRemoteSpawn() {
-  const jobId    = document.getElementById('rs-jobid').value.trim();
+  const username = document.getElementById('rs-user').value.trim();
   const animal   = document.getElementById('rs-animal').value.trim();
   const mutation = document.getElementById('rs-mutation').value.trim() || null;
   const traitsRaw= document.getElementById('rs-traits').value.trim();
   const traits   = traitsRaw ? traitsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
-  if (!jobId || !animal) return toast('Job ID and brainrot name are required.', 'error');
+  if (!username || !animal) return toast('Username and brainrot name are required.', 'error');
   try {
-    const data = await api('/api/admin/remote-spawn', { jobId, animal, mutation, traits });
+    const data = await api('/api/admin/remote-spawn', { username, animal, mutation, traits });
     showResult('rs-result', `✅ ${data.message}`);
     toast('Remote spawn queued!', 'success');
   } catch(e) { showResult('rs-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
 }
 
 async function runRemoteEvent() {
-  const jobId     = document.getElementById('re-jobid').value.trim();
+  const username  = document.getElementById('re-user').value.trim();
   const eventName = document.getElementById('re-eventname').value;
-  if (!jobId || !eventName) return toast('Job ID and event name are required.', 'error');
+  if (!username || !eventName) return toast('Username and event name are required.', 'error');
   try {
-    const data = await api('/api/admin/remote-event', { jobId, eventName });
+    const data = await api('/api/admin/remote-event', { username, eventName });
     showResult('re-result', `✅ ${data.message}`);
     toast('Event queued!', 'success');
   } catch(e) { showResult('re-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
 }
 
 async function runFreezebrainrot() {
-  const jobId  = document.getElementById('frz-jobid').value.trim();
+  const username = document.getElementById('frz-user').value.trim();
   const animal = document.getElementById('frz-animal').value.trim();
   const freeze = document.getElementById('frz-freeze').value;
-  if (!jobId || !animal) return toast('Job ID and brainrot name are required.', 'error');
+  if (!username || !animal) return toast('Username and brainrot name are required.', 'error');
   try {
-    const data = await api('/api/admin/freeze-brainrot', { jobId, animal, freeze: freeze === 'true' });
+    const data = await api('/api/admin/freeze-brainrot', { username, animal, freeze: freeze === 'true' });
     showResult('frz-result', `✅ ${data.message}`);
     toast('Freeze command queued!', 'success');
   } catch(e) { showResult('frz-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
 }
 
 async function runGiveItem() {
-  const jobId    = document.getElementById('gi-jobid').value.trim();
   const username = document.getElementById('gi-user').value.trim();
   const item     = document.getElementById('gi-item').value.trim();
-  if (!jobId || !username || !item) return toast('Job ID, username, and item name are required.', 'error');
+  if (!username || !item) return toast('Username and item name are required.', 'error');
   try {
-    const data = await api('/api/admin/give-item', { jobId, username, item });
+    const data = await api('/api/admin/give-item', { username, item });
     showResult('gi-result', `✅ ${data.message}`);
     toast('Give item queued!', 'success');
   } catch(e) { showResult('gi-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
 }
 
 async function runForceSpeed() {
-  const jobId    = document.getElementById('spd-jobid').value.trim();
   const username = document.getElementById('spd-user').value.trim();
   const speed    = parseFloat(document.getElementById('spd-speed').value);
-  if (!jobId || !username || isNaN(speed)) return toast('Job ID, username, and speed are required.', 'error');
+  if (!username || isNaN(speed)) return toast('Username and speed are required.', 'error');
   try {
-    const data = await api('/api/admin/force-speed', { jobId, username, speed });
+    const data = await api('/api/admin/force-speed', { username, speed });
     showResult('spd-result', `✅ ${data.message}`);
     toast(speed === 0 ? 'Speed override disabled!' : `Speed set to ${speed}!`, 'success');
   } catch(e) { showResult('spd-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
 }
 
 async function runPoofRoad() {
-  const jobId = document.getElementById('pr-jobid').value.trim();
-  if (!jobId) return toast('Server Job ID is required.', 'error');
+  const username = document.getElementById('pr-user').value.trim();
+  if (!username) return toast('Roblox username is required.', 'error');
   try {
-    const data = await api('/api/admin/poof-road', { jobId });
+    const data = await api('/api/admin/poof-road', { username });
     showResult('pr-result', `✅ ${data.message}`);
     toast('Poof road queued!', 'success');
   } catch(e) { showResult('pr-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
 }
 
 async function runPlaySound() {
-  const jobId   = document.getElementById('ps-jobid').value.trim();
-  const soundId = document.getElementById('ps-soundid').value.trim();
-  if (!jobId || !soundId) return toast('Job ID and Sound Asset ID are required.', 'error');
+  const username = document.getElementById('ps-user').value.trim();
+  const soundId  = document.getElementById('ps-soundid').value.trim();
+  if (!username || !soundId) return toast('Username and Sound Asset ID are required.', 'error');
   try {
-    const data = await api('/api/admin/play-sound', { jobId, soundId });
+    const data = await api('/api/admin/play-sound', { username, soundId });
     showResult('ps-result', `✅ ${data.message}`);
     toast('Sound queued!', 'success');
   } catch(e) { showResult('ps-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
