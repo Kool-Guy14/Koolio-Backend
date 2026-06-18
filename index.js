@@ -2769,6 +2769,58 @@ app.get('/api/admin/listredeemcodes', (req, res) => {
   res.json({ codes: list });
 });
 
+// Swap Datastores — swap the entire datastore entries of two players (both must be offline)
+app.post('/api/admin/swap-datastores', async (req, res) => {
+  const { usernameA, usernameB } = req.body;
+  if (!usernameA || !usernameB) return res.status(400).json({ error: 'usernameA and usernameB are required' });
+  if (usernameA.trim().toLowerCase() === usernameB.trim().toLowerCase())
+    return res.status(400).json({ error: 'Both usernames are the same.' });
+  try {
+    // Resolve both Roblox user IDs simultaneously
+    const [resA, resB] = await Promise.all([
+      axios.post('https://users.roblox.com/v1/usernames/users', { usernames: [usernameA], excludeBannedUsers: false }),
+      axios.post('https://users.roblox.com/v1/usernames/users', { usernames: [usernameB], excludeBannedUsers: false }),
+    ]);
+    const userA = resA.data?.data?.[0];
+    const userB = resB.data?.data?.[0];
+    if (!userA) return res.status(404).json({ error: `Player "${usernameA}" not found on Roblox.` });
+    if (!userB) return res.status(404).json({ error: `Player "${usernameB}" not found on Roblox.` });
+
+    const idA = String(userA.id);
+    const idB = String(userB.id);
+
+    // Block if either player is currently in-game
+    if (playersInGame.has(idA))
+      return res.status(400).json({ error: `${userA.name} is currently in-game. Ask them to leave first.` });
+    if (playersInGame.has(idB))
+      return res.status(400).json({ error: `${userB.name} is currently in-game. Ask them to leave first.` });
+
+    // Fetch both entries
+    const [entryA, entryB] = await Promise.all([getEntry(idA), getEntry(idB)]);
+    if (!entryA) return res.status(404).json({ error: `${userA.name} hasn't played the game yet (no datastore entry).` });
+    if (!entryB) return res.status(404).json({ error: `${userB.name} hasn't played the game yet (no datastore entry).` });
+
+    // Write A's data into B's key and B's data into A's key
+    await Promise.all([
+      axios.post(`${BASE}/entries/entry`, JSON.stringify(entryA), {
+        params:  { datastoreName: DATASTORE_NAME, entryKey: idB },
+        headers: { 'x-api-key': ROBLOX_API_KEY, 'Content-Type': 'application/json', 'roblox-entry-userids': JSON.stringify([Number(idB)]) },
+        timeout: 15000,
+      }),
+      axios.post(`${BASE}/entries/entry`, JSON.stringify(entryB), {
+        params:  { datastoreName: DATASTORE_NAME, entryKey: idA },
+        headers: { 'x-api-key': ROBLOX_API_KEY, 'Content-Type': 'application/json', 'roblox-entry-userids': JSON.stringify([Number(idA)]) },
+        timeout: 15000,
+      }),
+    ]);
+
+    console.log(`[SwapDatastores] Swapped datastores between ${userA.name} (${idA}) and ${userB.name} (${idB})`);
+    res.json({ message: `Datastores swapped between ${userA.name} and ${userB.name}.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Send DM
 app.post('/api/admin/dm', async (req, res) => {
   const { userId, message } = req.body;
