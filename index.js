@@ -20,6 +20,24 @@ const JOIN_LOG_CHANNEL_ID = '1512921765721014463';
 // ── In-game player tracking (userId strings) ─────────────────────────────────
 const playersInGame = new Set();
 
+// ── Player sessions: username (lowercase) -> { username, userId, jobId, joinedAt } ──
+// Populated from /roblox/join (every live server reports who joined + its own
+// game.JobId). This lets the admin dashboard target a player by username only —
+// we look up which server they're currently in and route the command there
+// automatically, instead of requiring the Job ID to be copied in by hand.
+const playerSessions = new Map();
+
+// Resolve a player's current server (Job ID) by username, across every server
+// that has reported a join. Returns null if we don't know where they are, or
+// if Roblox has since told us they left.
+function findJobIdByUsername(username) {
+  if (!username) return null;
+  const session = playerSessions.get(String(username).trim().toLowerCase());
+  if (!session) return null;
+  if (session.userId && !playersInGame.has(session.userId)) return null;
+  return session.jobId;
+}
+
 // ── Pending in-game claims: robloxUserId -> { animal, mutation, traits } ───────
 const pendingInGameClaims = new Map();
 
@@ -81,12 +99,20 @@ const pendingPlaySounds = new Map();
 const redeemCodes = new Map();
 
 app.post('/roblox/join', async (req, res) => {
-  const { username, userId } = req.body;
+  const { username, userId, jobId } = req.body;
   if (!username) return res.status(400).json({ error: 'Missing username' });
   try {
     const channel = await client.channels.fetch(JOIN_LOG_CHANNEL_ID);
     await channel.send(`🟢 **${username}** (ID: \`${userId}\`) joined the game!`);
     if (userId) playersInGame.add(String(userId));
+    if (jobId) {
+      playerSessions.set(String(username).toLowerCase(), {
+        username,
+        userId: userId ? String(userId) : null,
+        jobId: String(jobId),
+        joinedAt: Date.now(),
+      });
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('[JoinLog] Failed:', err.message);
@@ -96,7 +122,7 @@ app.post('/roblox/join', async (req, res) => {
 
 // ── Roblox Leave Log ─────────────────────────────────────────────────────────
 app.post('/roblox/leave', async (req, res) => {
-  const { username, userId, secondsPlayed } = req.body;
+  const { username, userId, secondsPlayed, jobId } = req.body;
   if (!username) return res.status(400).json({ error: 'Missing username' });
   try {
     const channel = await client.channels.fetch(JOIN_LOG_CHANNEL_ID);
@@ -110,6 +136,13 @@ app.post('/roblox/leave', async (req, res) => {
     if (seconds > 0 || parts.length === 0) parts.push(`${seconds} second${seconds !== 1 ? 's' : ''}`);
     const timeStr = parts.join(' and ');
     if (userId) playersInGame.delete(String(userId));
+    // Only clear the tracked session if it still points at the server they're
+    // leaving — avoids wiping a newer session if they already rejoined elsewhere.
+    const key = String(username).toLowerCase();
+    const session = playerSessions.get(key);
+    if (session && (!jobId || session.jobId === String(jobId))) {
+      playerSessions.delete(key);
+    }
     await channel.send(`🔴 **${username}** (ID: \`${userId}\`) left the game after playing for **${timeStr}**.`);
     res.json({ ok: true });
   } catch (err) {
@@ -2524,10 +2557,12 @@ app.post('/api/admin/dlcredeem', async (req, res) => {
   }
 });
 
-// Fake Spawn — queue a fake animal to spawn on a specific server (by job ID)
+// Fake Spawn — queue a fake animal to spawn on whichever server a player is currently in
 app.post('/api/admin/fakespawn', async (req, res) => {
-  const { jobId, animal, fakeType } = req.body;
-  if (!jobId || !animal) return res.status(400).json({ error: 'jobId and animal are required' });
+  const { username, animal, fakeType } = req.body;
+  if (!username || !animal) return res.status(400).json({ error: 'username and animal are required' });
+  const jobId = findJobIdByUsername(username);
+  if (!jobId) return res.status(404).json({ error: `Could not find "${username}" in any tracked server. Make sure they're currently in-game.` });
 
   // fakeType: 'fake1' = IsFake (poofs on click), 'fake2' = iffake (poofs on arrival), 'fake3' = FakeInBase (poofs in base)
   const resolvedType = fakeType === 'fake2' ? 'fake2' : fakeType === 'fake3' ? 'fake3' : 'fake1';
@@ -2535,18 +2570,20 @@ app.post('/api/admin/fakespawn', async (req, res) => {
   pendingFakeSpawns.set(jobId, { animal, fakeType: resolvedType, queuedAt: Date.now() });
 
   const typeLabel = resolvedType === 'fake2' ? 'Fake 2 (iffake — poofs on arrival)' : resolvedType === 'fake3' ? 'Fake 3 (FakeInBase — poofs in base)' : 'Fake 1 (IsFake — poofs on click)';
-  console.log(`[FakeSpawn] Queued "${animal}" on job ${jobId} as ${typeLabel}`);
-  res.json({ message: `Fake "${animal}" queued for job ${jobId.slice(0, 8)}… as ${typeLabel}.` });
+  console.log(`[FakeSpawn] Queued "${animal}" for "${username}"'s server (job ${jobId}) as ${typeLabel}`);
+  res.json({ message: `Fake "${animal}" queued for ${username}'s server as ${typeLabel}.` });
 });
-// Remote Announce — queue a notification for everyone in a specific server (by job ID)
+// Remote Announce — queue a notification for everyone in whichever server a player is currently in
 app.post('/api/admin/remote-announce', async (req, res) => {
-  const { jobId, text } = req.body;
-  if (!jobId || !text) return res.status(400).json({ error: 'jobId and text are required' });
+  const { username, text } = req.body;
+  if (!username || !text) return res.status(400).json({ error: 'username and text are required' });
+  const jobId = findJobIdByUsername(username);
+  if (!jobId) return res.status(404).json({ error: `Could not find "${username}" in any tracked server. Make sure they're currently in-game.` });
 
   pendingAnnouncements.set(jobId, { text, queuedAt: Date.now() });
 
-  console.log(`[Announce] Queued "${text}" for job ${jobId}`);
-  res.json({ message: `Announcement queued for job ${jobId.slice(0, 8)}…. Everyone in that server will see it.` });
+  console.log(`[Announce] Queued "${text}" for "${username}"'s server (job ${jobId})`);
+  res.json({ message: `Announcement queued for ${username}'s server. Everyone in that server will see it.` });
 });
 
 // Poof Base — queue a poof-base for a specific player (by username)
@@ -2570,10 +2607,12 @@ app.post('/api/admin/poofbase', async (req, res) => {
   }
 });
 
-// Remote Spawn — queue a real animal spawn on a specific server (by job ID)
+// Remote Spawn — queue a real animal spawn on whichever server a player is currently in
 app.post('/api/admin/remote-spawn', async (req, res) => {
-  const { jobId, animal, mutation, traits } = req.body;
-  if (!jobId || !animal) return res.status(400).json({ error: 'jobId and animal are required' });
+  const { username, animal, mutation, traits } = req.body;
+  if (!username || !animal) return res.status(400).json({ error: 'username and animal are required' });
+  const jobId = findJobIdByUsername(username);
+  if (!jobId) return res.status(404).json({ error: `Could not find "${username}" in any tracked server. Make sure they're currently in-game.` });
 
   const resolvedMutation = (mutation && mutation.trim()) ? mutation.trim() : null;
   const resolvedTraits   = Array.isArray(traits) ? traits.filter(Boolean) : [];
@@ -2582,61 +2621,71 @@ app.post('/api/admin/remote-spawn', async (req, res) => {
 
   const mutLabel   = resolvedMutation ? ` [${resolvedMutation}]` : '';
   const traitLabel = resolvedTraits.length ? ` (${resolvedTraits.join(', ')})` : '';
-  console.log(`[RemoteSpawn] Queued "${animal}"${mutLabel}${traitLabel} on job ${jobId}`);
-  res.json({ message: `"${animal}"${mutLabel}${traitLabel} queued for next spawn on job ${jobId.slice(0, 8)}….` });
+  console.log(`[RemoteSpawn] Queued "${animal}"${mutLabel}${traitLabel} for "${username}"'s server (job ${jobId})`);
+  res.json({ message: `"${animal}"${mutLabel}${traitLabel} queued for next spawn on ${username}'s server.` });
 });
 
-// Remote Event — trigger a named event on a specific server (by job ID)
+// Remote Event — trigger a named event on whichever server a player is currently in
 app.post('/api/admin/remote-event', async (req, res) => {
-  const { jobId, eventName } = req.body;
-  if (!jobId || !eventName) return res.status(400).json({ error: 'jobId and eventName are required' });
+  const { username, eventName } = req.body;
+  if (!username || !eventName) return res.status(400).json({ error: 'username and eventName are required' });
+  const jobId = findJobIdByUsername(username);
+  if (!jobId) return res.status(404).json({ error: `Could not find "${username}" in any tracked server. Make sure they're currently in-game.` });
 
   pendingRemoteEvents.set(jobId, { eventName, queuedAt: Date.now() });
 
-  console.log(`[RemoteEvent] Queued event "${eventName}" for job ${jobId}`);
-  res.json({ message: `Event "${eventName}" queued for job ${jobId.slice(0, 8)}…. It will fire on the next poll cycle.` });
+  console.log(`[RemoteEvent] Queued event "${eventName}" for "${username}"'s server (job ${jobId})`);
+  res.json({ message: `Event "${eventName}" queued for ${username}'s server. It will fire on the next poll cycle.` });
 });
 
-// Freeze Brainrot — queue a freeze/unfreeze for a specific server (by job ID)
+// Freeze Brainrot — queue a freeze/unfreeze for whichever server a player is currently in
 app.post('/api/admin/freeze-brainrot', (req, res) => {
-  const { jobId, animal, freeze } = req.body;
-  if (!jobId || !animal) return res.status(400).json({ error: 'jobId and animal are required' });
+  const { username, animal, freeze } = req.body;
+  if (!username || !animal) return res.status(400).json({ error: 'username and animal are required' });
+  const jobId = findJobIdByUsername(username);
+  if (!jobId) return res.status(404).json({ error: `Could not find "${username}" in any tracked server. Make sure they're currently in-game.` });
   const shouldFreeze = freeze === true || freeze === 'true';
   pendingFreezebrainrots.set(jobId, { animal, freeze: shouldFreeze, queuedAt: Date.now() });
   const action = shouldFreeze ? '🥶 Freeze' : '▶️ Unfreeze';
-  console.log(`[FreezeBreainrot] Queued ${action} "${animal}" on job ${jobId}`);
-  res.json({ message: `${action} queued for "${animal}" on job ${jobId.slice(0, 8)}….` });
+  console.log(`[FreezeBreainrot] Queued ${action} "${animal}" for "${username}"'s server (job ${jobId})`);
+  res.json({ message: `${action} queued for "${animal}" on ${username}'s server.` });
 });
 
-// Give Item — queue an item give for a specific player on a specific server (by job ID)
+// Give Item — queue an item give for a player, wherever they currently are
 app.post('/api/admin/give-item', (req, res) => {
-  const { jobId, username, item } = req.body;
-  if (!jobId || !username || !item) return res.status(400).json({ error: 'jobId, username, and item are required' });
+  const { username, item } = req.body;
+  if (!username || !item) return res.status(400).json({ error: 'username and item are required' });
+  const jobId = findJobIdByUsername(username);
+  if (!jobId) return res.status(404).json({ error: `Could not find "${username}" in any tracked server. Make sure they're currently in-game.` });
   pendingGiveItems.set(jobId, { username, item, queuedAt: Date.now() });
   console.log(`[GiveItem] Queued item "${item}" for "${username}" on job ${jobId}`);
-  res.json({ message: `Item "${item}" queued for ${username} on job ${jobId.slice(0, 8)}….` });
+  res.json({ message: `Item "${item}" queued for ${username}.` });
 });
 
-// Force Speed — queue a speed override for a specific player on a specific server (by job ID)
+// Force Speed — queue a speed override for a player, wherever they currently are
 app.post('/api/admin/force-speed', (req, res) => {
-  const { jobId, username, speed } = req.body;
-  if (!jobId || !username || speed === undefined || speed === null) return res.status(400).json({ error: 'jobId, username, and speed are required' });
+  const { username, speed } = req.body;
+  if (!username || speed === undefined || speed === null) return res.status(400).json({ error: 'username and speed are required' });
   const resolvedSpeed = parseFloat(speed);
   if (isNaN(resolvedSpeed)) return res.status(400).json({ error: 'speed must be a number' });
+  const jobId = findJobIdByUsername(username);
+  if (!jobId) return res.status(404).json({ error: `Could not find "${username}" in any tracked server. Make sure they're currently in-game.` });
   pendingForceSpeeds.set(jobId, { username, speed: resolvedSpeed, queuedAt: Date.now() });
   const label = resolvedSpeed === 0 ? 'disabled' : `set to ${resolvedSpeed}`;
   console.log(`[ForceSpeed] Queued speed ${label} for "${username}" on job ${jobId}`);
-  res.json({ message: `Speed ${label} queued for ${username} on job ${jobId.slice(0, 8)}….` });
+  res.json({ message: `Speed ${label} queued for ${username}.` });
 });
 
-// Poof Road — queue a poof of all road animals in a specific server (by job ID)
+// Poof Road — queue a poof of all road animals in whichever server a player is currently in
 // Skips craft-spawn animals. Fires Poof VFX + sound to all clients, then destroys.
 app.post('/api/admin/poof-road', (req, res) => {
-  const { jobId } = req.body;
-  if (!jobId) return res.status(400).json({ error: 'jobId is required' });
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ error: 'username is required' });
+  const jobId = findJobIdByUsername(username);
+  if (!jobId) return res.status(404).json({ error: `Could not find "${username}" in any tracked server. Make sure they're currently in-game.` });
   pendingPoofRoads.set(jobId, { queuedAt: Date.now() });
-  console.log(`[PoofRoad] Queued poof-road for job ${jobId}`);
-  res.json({ message: `Poof road queued for job ${jobId.slice(0, 8)}…. All non-craft road animals will poof on next poll.` });
+  console.log(`[PoofRoad] Queued poof-road for "${username}"'s server (job ${jobId})`);
+  res.json({ message: `Poof road queued for ${username}'s server. All non-craft road animals will poof on next poll.` });
 });
 
 // Morph Brainrot — morph a player into a brainrot model in a specific server (by job ID)
@@ -2650,15 +2699,17 @@ app.post('/api/admin/morph-brainrot', (req, res) => {
   res.json({ message: `Morph queued: "${username}" → "${brainrot}"${mutLabel} on job ${jobId.slice(0, 8)}….` });
 });
 
-// Play Sound — queue a sound to play for all clients in a specific server (by job ID)
+// Play Sound — queue a sound to play for all clients in whichever server a player is currently in
 app.post('/api/admin/play-sound', (req, res) => {
-  const { jobId, soundId } = req.body;
-  if (!jobId || !soundId) return res.status(400).json({ error: 'jobId and soundId are required' });
+  const { username, soundId } = req.body;
+  if (!username || !soundId) return res.status(400).json({ error: 'username and soundId are required' });
   const resolvedSoundId = String(soundId).trim();
   if (!/^\d+$/.test(resolvedSoundId)) return res.status(400).json({ error: 'soundId must be numeric' });
+  const jobId = findJobIdByUsername(username);
+  if (!jobId) return res.status(404).json({ error: `Could not find "${username}" in any tracked server. Make sure they're currently in-game.` });
   pendingPlaySounds.set(jobId, { soundId: resolvedSoundId, queuedAt: Date.now() });
-  console.log(`[PlaySound] Queued sound "${resolvedSoundId}" for job ${jobId}`);
-  res.json({ message: `Sound rbxassetid://${resolvedSoundId} queued for job ${jobId.slice(0, 8)}…. It will play for all clients on the next poll.` });
+  console.log(`[PlaySound] Queued sound "${resolvedSoundId}" for "${username}"'s server (job ${jobId})`);
+  res.json({ message: `Sound rbxassetid://${resolvedSoundId} queued for ${username}'s server. It will play for all clients on the next poll.` });
 });
 
 // ── Redeem code admin endpoints ───────────────────────────────────────────────
