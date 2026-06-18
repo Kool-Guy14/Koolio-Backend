@@ -247,6 +247,7 @@
 
   <div class="section-label">Misc</div>
   <a onclick="goto('dm')">💬 Send DM</a>
+  <a onclick="goto('swapdatastore')" id="nav-swapdatastore">🔄 Swap Datastores</a>
 </nav>
 
 <!-- ── Main ── -->
@@ -560,6 +561,27 @@
     <div class="field"><label>Message</label><textarea id="dm-msg" placeholder="Type your message..."></textarea></div>
     <button class="btn btn-primary" onclick="runDM()">💬 Send DM</button>
     <div class="result-box" id="dm-result"></div>
+  </div>
+</div>
+
+<!-- SWAP DATASTORES -->
+<div class="page" id="page-swapdatastore">
+  <h1>🔄 Swap Datastores</h1>
+  <p class="subtitle">Swap the entire datastore between two players. <strong>Both players must be offline</strong> — this will be blocked if either is currently in-game.</p>
+  <div class="card">
+    <div class="row">
+      <div class="field">
+        <label>Player A Username</label>
+        <input id="swap-user-a" placeholder="e.g. Builderman"/>
+      </div>
+      <div class="field">
+        <label>Player B Username</label>
+        <input id="swap-user-b" placeholder="e.g. Roblox"/>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--warn);margin-bottom:16px">⚠️ This is irreversible. Player A will get Player B's data and vice versa.</p>
+    <button class="btn btn-danger" onclick="runSwapDatastores()">🔄 Swap Datastores</button>
+    <div class="result-box" id="swap-result"></div>
   </div>
 </div>
 
@@ -1505,6 +1527,22 @@ loadRollable();
 
 // ── Searchable Dropdown System ────────────────────────────────────────────────
 let _allAnimals = [];
+
+// ── Swap Datastores ───────────────────────────────────────────────────────────
+async function runSwapDatastores() {
+  const userA = document.getElementById('swap-user-a').value.trim();
+  const userB = document.getElementById('swap-user-b').value.trim();
+  if (!userA || !userB) return toast('Both usernames are required.', 'error');
+  if (userA.toLowerCase() === userB.toLowerCase()) return toast('Both usernames are the same.', 'error');
+  if (!confirm(`Swap datastores between "${userA}" and "${userB}"? This is irreversible and both must be offline.`)) return;
+  try {
+    const data = await api('/api/admin/swap-datastores', { usernameA: userA, usernameB: userB });
+    showResult('swap-result', `✅ ${data.message}`);
+    toast('Datastores swapped!', 'success');
+    document.getElementById('swap-user-a').value = '';
+    document.getElementById('swap-user-b').value = '';
+  } catch(e) { showResult('swap-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
 
 async function loadAnimalsForDropdowns() {
   try {
