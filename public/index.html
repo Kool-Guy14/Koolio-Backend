@@ -213,15 +213,33 @@
       </div>
     </div>
 
-    <!-- Step 3: Code Generated (hidden until rolled) -->
+    <!-- Step 3: Claim options (shown after roll lands) -->
+    <div class="card" id="rng-step-claim" style="display:none">
+      <h2 style="font-size:14px;margin-bottom:6px;color:var(--muted)">STEP 3 — Claim Your Brainrot</h2>
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:4px">You rolled:</div>
+        <div id="rng-final-animal" style="font-size:20px;font-weight:800;color:var(--accent2)"></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-direction:column">
+        <button class="btn btn-success" id="rng-claim-code-btn" onclick="claimWithCode()" style="justify-content:center;padding:14px;font-size:15px">
+          🎟️ Claim With Code
+        </button>
+        <div style="color:var(--muted);font-size:12px;text-align:center;margin:-4px 0">Get a redeemable code to type in-game yourself</div>
+        <button class="btn btn-primary" id="rng-claim-base-btn" onclick="claimToBase()" style="justify-content:center;padding:14px;font-size:15px">
+          🎮 Claim To Base
+        </button>
+        <div style="color:var(--muted);font-size:12px;text-align:center;margin:-4px 0">Instantly added — spawns in-game if you're online, or saved to your base</div>
+      </div>
+      <div id="rng-claim-status" style="margin-top:14px;display:none"></div>
+    </div>
+
+    <!-- Step 4: Code display (shown after Claim With Code) -->
     <div class="card" id="rng-step-code" style="display:none;border-color:rgba(62,207,142,.4)">
-      <h2 style="font-size:14px;margin-bottom:12px;color:var(--muted)">STEP 3 — Your Redeemable Code</h2>
+      <h2 style="font-size:14px;margin-bottom:12px;color:var(--muted)">🎟️ Your Redeemable Code</h2>
       <div style="text-align:center">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:6px">You rolled:</div>
-        <div id="rng-final-animal" style="font-size:20px;font-weight:800;color:var(--accent2);margin-bottom:14px"></div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Redeem this code in-game:</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Type this code in-game:</div>
         <div id="rng-code-display" style="font-size:28px;font-weight:900;color:var(--success);letter-spacing:3px;font-family:monospace;background:var(--bg);border:2px solid var(--success);border-radius:10px;padding:14px;cursor:pointer" onclick="copyCode()" title="Click to copy"></div>
-        <div style="color:var(--muted);font-size:12px;margin-top:8px">⚡ 1 use only — code expires once claimed</div>
+        <div style="color:var(--muted);font-size:12px;margin-top:8px">⚡ 1 use only — expires once claimed</div>
         <button class="btn btn-ghost" onclick="copyCode()" style="margin-top:12px;width:100%;justify-content:center">📋 Copy Code</button>
         <div id="rng-copy-confirm" style="color:var(--success);font-size:13px;margin-top:6px;display:none">✅ Copied to clipboard!</div>
       </div>
@@ -1098,6 +1116,7 @@ function resetRNG() {
   if (_spinInterval) { clearInterval(_spinInterval); _spinInterval = null; }
   document.getElementById('rng-step-username').style.display = 'block';
   document.getElementById('rng-step-roll').style.display = 'none';
+  document.getElementById('rng-step-claim').style.display = 'none';
   document.getElementById('rng-step-code').style.display = 'none';
   document.getElementById('rng-again-row').style.display = 'none';
   document.getElementById('rng-slot-display').style.display = 'none';
@@ -1111,9 +1130,12 @@ function startNewRoll() {
   _rngRolledAnimal = null;
   _rngGeneratedCode = null;
   document.getElementById('rng-step-code').style.display = 'none';
+  document.getElementById('rng-step-claim').style.display = 'none';
   document.getElementById('rng-again-row').style.display = 'none';
+  document.getElementById('rng-claim-status').style.display = 'none';
   document.getElementById('rng-step-roll').style.display = 'block';
   document.getElementById('rng-spinning-text').textContent = 'Press Roll! 🎲';
+  document.getElementById('rng-spinning-text').style.color = '';
   document.getElementById('rng-spinning-text').classList.remove('spinning');
   document.getElementById('rng-roll-btn').disabled = false;
   document.getElementById('rng-roll-btn').textContent = '🎲 Roll for Brainrot';
@@ -1130,7 +1152,7 @@ async function rollRNG() {
   try {
     const data = await fetch('/api/rollable').then(r => r.json());
     animals = data.animals || [];
-  } catch(e) { /* ignore, handle below */ }
+  } catch(e) { /* ignore */ }
 
   if (!animals.length) {
     spinEl.textContent = '❌ No animals to roll!';
@@ -1139,14 +1161,11 @@ async function rollRNG() {
     return;
   }
 
-  // Slot machine spin for 2.5 seconds
   if (_spinInterval) clearInterval(_spinInterval);
   spinEl.classList.add('spinning');
   document.getElementById('rng-slot-display').style.display = 'flex';
-  let ticks = 0;
   _spinInterval = setInterval(() => {
     spinEl.textContent = animals[Math.floor(Math.random() * animals.length)];
-    ticks++;
   }, 80);
 
   await new Promise(r => setTimeout(r, 2500));
@@ -1157,22 +1176,29 @@ async function rollRNG() {
   spinEl.classList.remove('spinning');
   spinEl.textContent = '🎉 ' + _rngRolledAnimal;
   spinEl.style.color = 'var(--success)';
+  btn.textContent = '✅ Rolled!';
 
-  // Generate a code and register it server-side
-  btn.textContent = '⏳ Generating code...';
-  await generateCodeForRoll();
+  // Show the claim choice step
+  document.getElementById('rng-final-animal').textContent = _rngRolledAnimal;
+  document.getElementById('rng-claim-status').style.display = 'none';
+  document.getElementById('rng-claim-code-btn').disabled = false;
+  document.getElementById('rng-claim-code-btn').textContent = '🎟️ Claim With Code';
+  document.getElementById('rng-claim-base-btn').disabled = false;
+  document.getElementById('rng-claim-base-btn').textContent = '🎮 Claim To Base';
+  document.getElementById('rng-step-claim').style.display = 'block';
+  document.getElementById('rng-step-code').style.display = 'none';
+  document.getElementById('rng-again-row').style.display = 'none';
 }
 
-function generateCodeString(username, animal) {
-  // e.g. SKIBIDI-XK7Q2  (username prefix + animal word + random suffix)
-  const userPart   = (username || 'ROLL').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
-  const animalWord = (animal  || 'BRAIN').split(' ')[0].replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
-  const rand       = Math.random().toString(36).toUpperCase().slice(2, 7);
-  return `${userPart}-${animalWord}-${rand}`;
-}
+// ── Claim With Code ────────────────────────────────────────────────────────
+async function claimWithCode() {
+  const btn = document.getElementById('rng-claim-code-btn');
+  const statusEl = document.getElementById('rng-claim-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating...';
+  document.getElementById('rng-claim-base-btn').disabled = true;
+  statusEl.style.display = 'none';
 
-async function generateCodeForRoll() {
-  const btn = document.getElementById('rng-roll-btn');
   try {
     const codeName = generateCodeString(_loggedInRobloxUsername, _rngRolledAnimal);
     const res = await fetch('/api/admin/createredeemcode', {
@@ -1184,19 +1210,56 @@ async function generateCodeForRoll() {
     if (!res.ok) throw new Error(data.error || 'Failed to generate code');
 
     _rngGeneratedCode = codeName;
-
-    // Show code card
-    document.getElementById('rng-final-animal').textContent = '🎊 ' + _rngRolledAnimal;
     document.getElementById('rng-code-display').textContent = codeName;
-    document.getElementById('rng-step-roll').style.display = 'none';
+    document.getElementById('rng-step-claim').style.display = 'none';
     document.getElementById('rng-step-code').style.display = 'block';
     document.getElementById('rng-again-row').style.display = 'block';
   } catch(e) {
     btn.disabled = false;
-    btn.textContent = '🎲 Roll Again';
-    document.getElementById('rng-spinning-text').textContent = '❌ ' + e.message;
-    document.getElementById('rng-spinning-text').style.color = 'var(--danger)';
+    btn.textContent = '🎟️ Claim With Code';
+    document.getElementById('rng-claim-base-btn').disabled = false;
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.style.cssText = 'display:block;color:var(--danger);font-size:13px;margin-top:12px;background:rgba(252,92,92,.1);padding:10px;border-radius:8px;border:1px solid rgba(252,92,92,.3)';
   }
+}
+
+// ── Claim To Base — directly give via spawnAnimalSmrt ─────────────────────
+async function claimToBase() {
+  const btn = document.getElementById('rng-claim-base-btn');
+  const statusEl = document.getElementById('rng-claim-status');
+  if (!_loggedInRobloxUsername || !_rngRolledAnimal) return;
+  btn.disabled = true;
+  btn.textContent = '⏳ Claiming...';
+  document.getElementById('rng-claim-code-btn').disabled = true;
+  statusEl.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/rng-claim-base', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: _loggedInRobloxUsername, animal: _rngRolledAnimal })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to claim');
+
+    document.getElementById('rng-step-claim').style.display = 'none';
+    statusEl.innerHTML = `✅ <strong>${data.message}</strong>`;
+    statusEl.style.cssText = 'display:block;color:var(--success);font-size:14px;background:rgba(62,207,142,.1);padding:14px;border-radius:8px;border:1px solid rgba(62,207,142,.3);text-align:center';
+    document.getElementById('rng-again-row').style.display = 'block';
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '🎮 Claim To Base';
+    document.getElementById('rng-claim-code-btn').disabled = false;
+    statusEl.textContent = '❌ ' + e.message;
+    statusEl.style.cssText = 'display:block;color:var(--danger);font-size:13px;margin-top:12px;background:rgba(252,92,92,.1);padding:10px;border-radius:8px;border:1px solid rgba(252,92,92,.3)';
+  }
+}
+
+function generateCodeString(username, animal) {
+  const userPart   = (username || 'ROLL').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
+  const animalWord = (animal  || 'BRAIN').split(' ')[0].replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
+  const rand       = Math.random().toString(36).toUpperCase().slice(2, 7);
+  return `${userPart}-${animalWord}-${rand}`;
 }
 
 async function copyCode() {
