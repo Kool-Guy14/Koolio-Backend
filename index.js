@@ -356,6 +356,33 @@ app.post('/roblox/use-redeemcode', (req, res) => {
   res.json({ ok: true, exhausted: false });
 });
 
+// ── RNG Claim To Base (web landing page) ─────────────────────────────────────
+// Works exactly like /api/claim but uses spawnAnimalSmrt so it goes in-game
+// if the player is online, or falls back to datastore if they're offline.
+app.post('/api/rng-claim-base', async (req, res) => {
+  const { username, animal } = req.body;
+  if (!username || !animal) return res.status(400).json({ error: 'Missing username or animal.' });
+
+  const rollable = loadRollable();
+  if (!rollable.includes(animal) &&
+      !['John Pork','Meowl','Strawberry Elephant','Lazy Ducky'].includes(animal)) {
+    return res.status(400).json({ error: 'That animal is not rollable.' });
+  }
+
+  try {
+    const { userName, method } = await spawnAnimalSmrt(username, animal, null, []);
+    const dest = method === 'ingame'
+      ? `spawned in-game for ${userName}! 🎮`
+      : `added to ${userName}'s base! 🏠`;
+    res.json({ success: true, message: `${animal} has been ${dest}`, username: userName, method });
+  } catch (err) {
+    console.error('[RNGClaimBase] Error:', err.message);
+    if (err.response?.status === 403)
+      return res.status(403).json({ error: 'API key does not have DataStore Write permission.' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Discord ──────────────────────────────────────────────────────────────────
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
 
