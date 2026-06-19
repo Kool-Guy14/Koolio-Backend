@@ -134,24 +134,21 @@
   .flex-end { display: flex; justify-content: flex-end; }
   hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 
-  /* ── Login Gate ── */
+  /* ── Landing Page (RNG) ── */
   .layout { display: none; }
   .layout.show { display: flex; }
   #login-overlay {
     position: fixed; inset: 0; background: var(--bg);
-    display: flex; align-items: center; justify-content: center; z-index: 10000;
+    display: flex; align-items: flex-start; justify-content: center;
+    z-index: 10000; overflow-y: auto; padding: 40px 20px;
   }
   #login-overlay.hidden { display: none; }
-  .login-box {
-    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 32px; width: 100%; max-width: 320px;
+  /* Slot spinner animation */
+  @keyframes pulse-glow {
+    0%,100% { text-shadow: 0 0 8px rgba(124,92,252,.6); }
+    50% { text-shadow: 0 0 24px rgba(124,92,252,1), 0 0 40px rgba(252,92,125,.4); }
   }
-  .login-box h1 { font-size: 18px; margin-bottom: 4px; text-align: center; }
-  .login-box .subtitle { text-align: center; margin-bottom: 22px; }
-  .login-box .field { margin-bottom: 14px; }
-  .login-box .btn { width: 100%; justify-content: center; margin-top: 4px; }
-  .login-error { color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center; display: none; }
-  .login-error.show { display: block; }
+  .spinning { animation: pulse-glow .3s ease infinite; color: var(--accent2) !important; }
 
   /* ── Searchable Dropdown ── */
   .searchable-dropdown { position: relative; }
@@ -174,32 +171,67 @@
 </head>
 <body>
 
-<!-- ── Login Gate ── -->
+<!-- ── Landing Page (RNG Roll + Secret Admin) ── -->
 <div id="login-overlay">
-  <div class="login-box">
-    <h1>🧠 Brainrot Admin</h1>
-    <p class="subtitle">Sign in to continue</p>
-    <div class="field">
-      <label>Username</label>
-      <input id="login-user" placeholder="Username" autocomplete="username"/>
-    </div>
-    <div class="field">
-      <label>Password</label>
-      <input id="login-pass" type="password" placeholder="Password" autocomplete="current-password"/>
-    </div>
-    <button class="btn btn-primary" onclick="attemptLogin()">🔓 Enter</button>
-    <div class="login-error" id="login-error">Access denied — invalid username or password.</div>
+  <div id="rng-landing" style="width:100%;max-width:440px">
 
-    <div id="rng-box" style="display:none;margin-top:18px;text-align:center">
-      <hr style="margin:18px 0"/>
-      <p style="color:var(--muted);font-size:13px;margin-bottom:12px">No admin access — but here's a free roll! 🎲</p>
-      <button class="btn btn-success" onclick="rollRNG()" style="width:100%;justify-content:center">🎲 Roll</button>
-      <div id="rng-result" style="margin-top:14px;display:none">
-        <div style="font-size:18px;font-weight:700;color:var(--accent)" id="rng-animal-name"></div>
-        <button class="btn btn-primary" onclick="claimRNG()" style="width:100%;justify-content:center;margin-top:10px" id="rng-claim-btn">✅ Claim</button>
-      </div>
-      <div class="result-box" id="rng-msg" style="margin-top:10px"></div>
+    <!-- Header -->
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:48px;margin-bottom:8px">🧠</div>
+      <h1 style="font-size:26px;font-weight:800;color:var(--accent);margin-bottom:4px">Brainrot<span style="color:var(--accent2)">RNG</span></h1>
+      <p style="color:var(--muted);font-size:14px">Enter your Roblox username, roll for a brainrot, and get a redeemable code!</p>
     </div>
+
+    <!-- Step 1: Username -->
+    <div class="card" id="rng-step-username" style="margin-bottom:16px">
+      <h2 style="font-size:14px;margin-bottom:12px;color:var(--muted)">STEP 1 — Your Roblox Username</h2>
+      <div style="display:flex;gap:10px">
+        <input id="rng-username-input" placeholder="Enter Roblox username..." autocomplete="off"
+          style="flex:1" onkeydown="if(event.key==='Enter')confirmUsername()"/>
+        <button class="btn btn-primary" onclick="confirmUsername()" style="white-space:nowrap">Confirm ✓</button>
+      </div>
+      <div id="rng-username-error" style="color:var(--danger);font-size:13px;margin-top:8px;display:none"></div>
+    </div>
+
+    <!-- Step 2: Roll (hidden until username confirmed) -->
+    <div class="card" id="rng-step-roll" style="margin-bottom:16px;display:none">
+      <h2 style="font-size:14px;margin-bottom:6px;color:var(--muted)">STEP 2 — Roll Your Brainrot</h2>
+      <div style="font-size:13px;color:var(--success);margin-bottom:14px">
+        🎮 Playing as: <strong id="rng-confirmed-name" style="color:var(--text)"></strong>
+        <button onclick="resetRNG()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;margin-left:8px">(change)</button>
+      </div>
+
+      <!-- Roll button + animation area -->
+      <div style="text-align:center">
+        <div id="rng-slot-display" style="display:none;background:var(--bg);border:2px solid var(--accent);border-radius:12px;padding:18px;margin-bottom:16px;min-height:80px;display:flex;align-items:center;justify-content:center;flex-direction:column">
+          <div id="rng-spinning-text" style="font-size:22px;font-weight:800;color:var(--accent);letter-spacing:0.5px;transition:all 0.08s;min-height:32px"></div>
+          <div id="rng-rarity-tag" style="margin-top:8px;display:none"></div>
+        </div>
+        <button class="btn btn-success" id="rng-roll-btn" onclick="rollRNG()" style="width:100%;justify-content:center;font-size:16px;padding:14px 20px">
+          🎲 Roll for Brainrot
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 3: Code Generated (hidden until rolled) -->
+    <div class="card" id="rng-step-code" style="display:none;border-color:rgba(62,207,142,.4)">
+      <h2 style="font-size:14px;margin-bottom:12px;color:var(--muted)">STEP 3 — Your Redeemable Code</h2>
+      <div style="text-align:center">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px">You rolled:</div>
+        <div id="rng-final-animal" style="font-size:20px;font-weight:800;color:var(--accent2);margin-bottom:14px"></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em">Redeem this code in-game:</div>
+        <div id="rng-code-display" style="font-size:28px;font-weight:900;color:var(--success);letter-spacing:3px;font-family:monospace;background:var(--bg);border:2px solid var(--success);border-radius:10px;padding:14px;cursor:pointer" onclick="copyCode()" title="Click to copy"></div>
+        <div style="color:var(--muted);font-size:12px;margin-top:8px">⚡ 1 use only — code expires once claimed</div>
+        <button class="btn btn-ghost" onclick="copyCode()" style="margin-top:12px;width:100%;justify-content:center">📋 Copy Code</button>
+        <div id="rng-copy-confirm" style="color:var(--success);font-size:13px;margin-top:6px;display:none">✅ Copied to clipboard!</div>
+      </div>
+    </div>
+
+    <!-- Roll Again -->
+    <div id="rng-again-row" style="display:none;text-align:center;margin-top:4px">
+      <button class="btn btn-ghost" onclick="startNewRoll()" style="width:100%;justify-content:center">🔄 Roll Again</button>
+    </div>
+
   </div>
 </div>
 
@@ -974,133 +1006,220 @@
 <div id="toast-container"></div>
 
 <script>
-// ── Login Gate ──────────────────────────────────────────────────────────────
-// Admins: enter their handle + plaintext admin password → full panel access.
-// Regular users: enter their Discord ID + their account password → RNG-only.
-// pairs.json keys are Discord IDs; passwordHash is SHA-256 of their password.
+// ── Admin Credentials ──────────────────────────────────────────────────────
 const ADMIN_CREDENTIALS = {
   'urbuddy1102':      'FuckTaco',
   'placeholderadmin': 'FuckTaco'
 };
 
-let _pairsCache = null;
-let _loggedInRobloxUsername = null; // set on successful regular-user login
+let _loggedInRobloxUsername = null;
+let _rngRolledAnimal = null;
+let _rngGeneratedCode = null;
+let _spinInterval = null;
 
-async function loadPairs() {
-  if (_pairsCache) return _pairsCache;
-  try {
-    const res = await fetch('/pairs.json');
-    if (!res.ok) throw new Error('not found');
-    _pairsCache = await res.json();
-    return _pairsCache;
-  } catch (e) {
-    console.warn('Could not load pairs.json:', e.message);
-    return {};
+// ── Username confirmation: SECRETADMIN opens dashboard, else proceed to roll ─
+async function confirmUsername() {
+  const input = document.getElementById('rng-username-input');
+  const errEl = document.getElementById('rng-username-error');
+  const val   = input.value.trim();
+  errEl.style.display = 'none';
+
+  if (!val) {
+    errEl.textContent = 'Please enter a username.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // ── SECRETADMIN: show password prompt ──────────────────────────────────────
+  if (val.toUpperCase() === 'SECRETADMIN') {
+    showAdminLogin();
+    return;
+  }
+
+  // Also still support the old admin usernames by name
+  const adminPass = ADMIN_CREDENTIALS[val.toLowerCase()];
+  if (adminPass !== undefined) {
+    showAdminLogin(val.toLowerCase());
+    return;
+  }
+
+  _loggedInRobloxUsername = val;
+  document.getElementById('rng-confirmed-name').textContent = val;
+
+  // Show roll step
+  document.getElementById('rng-step-username').style.display = 'none';
+  document.getElementById('rng-step-roll').style.display = 'block';
+  document.getElementById('rng-slot-display').style.display = 'flex';
+  document.getElementById('rng-spinning-text').textContent = 'Press Roll! 🎲';
+}
+
+// ── Show inline admin password prompt ─────────────────────────────────────
+function showAdminLogin(knownUser) {
+  const overlay = document.getElementById('login-overlay');
+  overlay.innerHTML = `
+    <div style="width:100%;max-width:320px">
+      <div class="card" style="text-align:center">
+        <div style="font-size:36px;margin-bottom:8px">🔐</div>
+        <h1 style="font-size:18px;margin-bottom:4px">Admin Access</h1>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:20px">Enter your admin password</p>
+        <div class="field" style="text-align:left">
+          <label>Username</label>
+          <input id="admin-user" placeholder="Admin username" value="${knownUser || ''}" autocomplete="username"/>
+        </div>
+        <div class="field" style="text-align:left">
+          <label>Password</label>
+          <input id="admin-pass" type="password" placeholder="Password" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter')attemptAdminLogin()"/>
+        </div>
+        <button class="btn btn-primary" onclick="attemptAdminLogin()" style="width:100%;justify-content:center">🔓 Enter</button>
+        <div id="admin-error" style="color:var(--danger);font-size:13px;margin-top:10px;display:none">Access denied.</div>
+        <button onclick="location.reload()" class="btn btn-ghost" style="width:100%;justify-content:center;margin-top:10px;font-size:13px">← Back</button>
+      </div>
+    </div>`;
+}
+
+function attemptAdminLogin() {
+  const user = document.getElementById('admin-user').value.trim().toLowerCase();
+  const pass = document.getElementById('admin-pass').value;
+  const errEl = document.getElementById('admin-error');
+  const adminPass = ADMIN_CREDENTIALS[user];
+  if (adminPass !== undefined && pass === adminPass) {
+    document.getElementById('login-overlay').classList.add('hidden');
+    document.getElementById('layout').classList.add('show');
+  } else {
+    errEl.style.display = 'block';
   }
 }
 
+function resetRNG() {
+  _loggedInRobloxUsername = null;
+  _rngRolledAnimal = null;
+  _rngGeneratedCode = null;
+  if (_spinInterval) { clearInterval(_spinInterval); _spinInterval = null; }
+  document.getElementById('rng-step-username').style.display = 'block';
+  document.getElementById('rng-step-roll').style.display = 'none';
+  document.getElementById('rng-step-code').style.display = 'none';
+  document.getElementById('rng-again-row').style.display = 'none';
+  document.getElementById('rng-slot-display').style.display = 'none';
+  document.getElementById('rng-username-input').value = '';
+  document.getElementById('rng-username-error').style.display = 'none';
+  document.getElementById('rng-roll-btn').disabled = false;
+  document.getElementById('rng-roll-btn').textContent = '🎲 Roll for Brainrot';
+}
+
+function startNewRoll() {
+  _rngRolledAnimal = null;
+  _rngGeneratedCode = null;
+  document.getElementById('rng-step-code').style.display = 'none';
+  document.getElementById('rng-again-row').style.display = 'none';
+  document.getElementById('rng-step-roll').style.display = 'block';
+  document.getElementById('rng-spinning-text').textContent = 'Press Roll! 🎲';
+  document.getElementById('rng-spinning-text').classList.remove('spinning');
+  document.getElementById('rng-roll-btn').disabled = false;
+  document.getElementById('rng-roll-btn').textContent = '🎲 Roll for Brainrot';
+}
+
+// ── RNG Roll + slot machine animation ─────────────────────────────────────
+async function rollRNG() {
+  const btn    = document.getElementById('rng-roll-btn');
+  const spinEl = document.getElementById('rng-spinning-text');
+  btn.disabled = true;
+  btn.textContent = '🎰 Rolling...';
+
+  let animals = [];
+  try {
+    const data = await fetch('/api/rollable').then(r => r.json());
+    animals = data.animals || [];
+  } catch(e) { /* ignore, handle below */ }
+
+  if (!animals.length) {
+    spinEl.textContent = '❌ No animals to roll!';
+    btn.disabled = false;
+    btn.textContent = '🎲 Roll for Brainrot';
+    return;
+  }
+
+  // Slot machine spin for 2.5 seconds
+  if (_spinInterval) clearInterval(_spinInterval);
+  spinEl.classList.add('spinning');
+  document.getElementById('rng-slot-display').style.display = 'flex';
+  let ticks = 0;
+  _spinInterval = setInterval(() => {
+    spinEl.textContent = animals[Math.floor(Math.random() * animals.length)];
+    ticks++;
+  }, 80);
+
+  await new Promise(r => setTimeout(r, 2500));
+  clearInterval(_spinInterval);
+  _spinInterval = null;
+
+  _rngRolledAnimal = animals[Math.floor(Math.random() * animals.length)];
+  spinEl.classList.remove('spinning');
+  spinEl.textContent = '🎉 ' + _rngRolledAnimal;
+  spinEl.style.color = 'var(--success)';
+
+  // Generate a code and register it server-side
+  btn.textContent = '⏳ Generating code...';
+  await generateCodeForRoll();
+}
+
+function generateCodeString(username, animal) {
+  // e.g. SKIBIDI-XK7Q2  (username prefix + animal word + random suffix)
+  const userPart   = (username || 'ROLL').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
+  const animalWord = (animal  || 'BRAIN').split(' ')[0].replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
+  const rand       = Math.random().toString(36).toUpperCase().slice(2, 7);
+  return `${userPart}-${animalWord}-${rand}`;
+}
+
+async function generateCodeForRoll() {
+  const btn = document.getElementById('rng-roll-btn');
+  try {
+    const codeName = generateCodeString(_loggedInRobloxUsername, _rngRolledAnimal);
+    const res = await fetch('/api/admin/createredeemcode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codeName, brainrotName: _rngRolledAnimal, limitedUses: 1 })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to generate code');
+
+    _rngGeneratedCode = codeName;
+
+    // Show code card
+    document.getElementById('rng-final-animal').textContent = '🎊 ' + _rngRolledAnimal;
+    document.getElementById('rng-code-display').textContent = codeName;
+    document.getElementById('rng-step-roll').style.display = 'none';
+    document.getElementById('rng-step-code').style.display = 'block';
+    document.getElementById('rng-again-row').style.display = 'block';
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '🎲 Roll Again';
+    document.getElementById('rng-spinning-text').textContent = '❌ ' + e.message;
+    document.getElementById('rng-spinning-text').style.color = 'var(--danger)';
+  }
+}
+
+async function copyCode() {
+  if (!_rngGeneratedCode) return;
+  try {
+    await navigator.clipboard.writeText(_rngGeneratedCode);
+    const el = document.getElementById('rng-copy-confirm');
+    el.style.display = 'block';
+    setTimeout(() => el.style.display = 'none', 2500);
+  } catch(e) { /* clipboard denied */ }
+}
+
+// ── Legacy stubs (referenced by old code that may still exist in page) ──────
 async function sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
+async function loadPairs() { return {}; }
 
-async function attemptLogin() {
-  const user   = document.getElementById('login-user').value.trim();
-  const pass   = document.getElementById('login-pass').value;
-  const errEl  = document.getElementById('login-error');
-  const rngBox = document.getElementById('rng-box');
-
-  errEl.classList.remove('show');
-  rngBox.style.display = 'none';
-  _loggedInRobloxUsername = null;
-
-  if (!user || !pass) { errEl.classList.add('show'); return; }
-
-  // 1️⃣ Admin path — plaintext password check, bypasses pairs.json
-  const adminPass = ADMIN_CREDENTIALS[user.toLowerCase()];
-  if (adminPass !== undefined) {
-    if (pass === adminPass) {
-      document.getElementById('login-overlay').classList.add('hidden');
-      document.getElementById('layout').classList.add('show');
-    } else {
-      errEl.classList.add('show'); // wrong admin password — hard deny, no RNG
-    }
-    return;
-  }
-
-  // 2️⃣ Regular user path — Discord ID (exact) + SHA-256 password
-  const pairs = await loadPairs();
-  const entry = pairs[user];
-  if (entry && entry.passwordHash) {
-    const hash = await sha256(pass);
-    if (hash === entry.passwordHash) {
-      _loggedInRobloxUsername = entry.robloxUsername;
-      rngBox.style.display = 'block';
-      document.getElementById('rng-result').style.display = 'none';
-      document.getElementById('rng-msg').classList.remove('show');
-      return;
-    }
-  }
-
-  // 3️⃣ No match — deny
-  errEl.classList.add('show');
-}
-
-// ── RNG Roll (fallback for non-admin login attempts) ─────────────────────────
-let rngRolledAnimal = null;
-
-async function rollRNG() {
-  const msgEl = document.getElementById('rng-msg');
-  msgEl.classList.remove('show');
-  document.getElementById('rng-result').style.display = 'none';
-  try {
-    const data = await fetch('/api/rollable').then(r => r.json());
-    const animals = data.animals || [];
-    if (!animals.length) {
-      msgEl.textContent = '❌ No animals available to roll.';
-      msgEl.className = 'result-box show error';
-      return;
-    }
-    rngRolledAnimal = animals[Math.floor(Math.random() * animals.length)];
-    document.getElementById('rng-animal-name').textContent = `🎉 You rolled: ${rngRolledAnimal}`;
-    document.getElementById('rng-result').style.display = 'block';
-  } catch (e) {
-    msgEl.textContent = `❌ ${e.message}`;
-    msgEl.className = 'result-box show error';
-  }
-}
-
-async function claimRNG() {
-  const username = _loggedInRobloxUsername;
-  const msgEl = document.getElementById('rng-msg');
-  if (!username || !rngRolledAnimal) return;
-  const claimBtn = document.getElementById('rng-claim-btn');
-  claimBtn.disabled = true;
-  try {
-    const data = await fetch('/api/admin/give', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, animal: rngRolledAnimal, mutation: null, traits: [] })
-    }).then(async r => {
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || d.message || 'Request failed');
-      return d;
-    });
-    msgEl.textContent = `✅ ${data.message}`;
-    msgEl.className = 'result-box show';
-    claimBtn.textContent = '✅ Claimed!';
-  } catch (e) {
-    msgEl.textContent = `❌ ${e.message}`;
-    msgEl.className = 'result-box show error';
-    claimBtn.disabled = false;
-  }
-}
-
-// Allow pressing Enter on either login field to submit
-document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') attemptLogin(); });
-document.getElementById('login-user').addEventListener('keydown', e => { if (e.key === 'Enter') attemptLogin(); });
-
-// Preload pairs.json so login is instant
-loadPairs();
+// Allow Enter on username field
+document.getElementById('rng-username-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmUsername();
+});
 
 // ── Navigation ──────────────────────────────────────────────────────────────
 function goto(page) {
