@@ -2837,6 +2837,20 @@ app.post('/api/admin/dm', async (req, res) => {
 
 // ════════════════════════════════════════════════════════════════════════════
 
+// ── Global crash guards (prevent the whole process from dying on any error) ───
+process.on('uncaughtException', err => {
+  console.error('[CRASH] Uncaught exception — keeping process alive:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[CRASH] Unhandled promise rejection:', reason);
+});
+
+// ── Discord error/reconnect logging ──────────────────────────────────────────
+client.on('error',       err => console.error('[Discord] Client error:', err));
+client.on('warn',        msg => console.warn('[Discord] Warn:', msg));
+client.on('disconnect',  ()  => console.warn('[Discord] Disconnected — will attempt reconnect'));
+client.on('reconnecting',()  => console.log('[Discord] Reconnecting...'));
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 const picturesDir = path.join(__dirname, 'pictures');
 if (!fs.existsSync(picturesDir)) fs.mkdirSync(picturesDir);
@@ -2845,7 +2859,7 @@ app.listen(PORT, () => console.log(`[Web] Running → http://localhost:${PORT}`)
 
 client.once('ready', async () => {
   console.log(`[Discord] Logged in as ${client.user.tag}`);
-  await registerCommands();
+  try { await registerCommands(); } catch(e) { console.error('[Ready] registerCommands failed:', e.message); }
   loadCache();
   loadPairs();
 });
