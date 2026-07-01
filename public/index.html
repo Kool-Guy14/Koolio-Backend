@@ -279,6 +279,7 @@
   <a onclick="goto('freezebrainrot')" id="nav-freezebrainrot">🥶 Freeze Brainrot</a>
   <a onclick="goto('giveitem')" id="nav-giveitem">🎒 Give Item</a>
   <a onclick="goto('forcespeed')" id="nav-forcespeed">💨 Force Speed</a>
+  <a onclick="goto('teleport')" id="nav-teleport">🚀 Teleport Player</a>
 
   <div class="section-label">Server Tools</div>
   <a onclick="goto('poofroad')" id="nav-poofroad">💥 Poof Road</a>
@@ -491,6 +492,28 @@
       Continuously forces the player's <code>Humanoid.WalkSpeed</code> every 0.1s until you set it to <strong>0</strong> to disable.<br>
       The player must be <strong>currently in-game</strong> on that server.<br>
       Default Roblox walk speed is <strong>16</strong>.
+    </p>
+  </div>
+</div>
+
+<!-- TELEPORT -->
+<div class="page" id="page-teleport">
+  <h1>🚀 Teleport Player</h1>
+  <p class="subtitle">Teleport a player currently in-game to another place (and optionally a specific server instance).</p>
+  <div class="card">
+    <div class="row">
+      <div class="field"><label>Roblox Username</label><input id="tp-user" placeholder="e.g. Builderman"/></div>
+      <div class="field"><label>Place ID</label><input id="tp-placeid" type="number" placeholder="e.g. 123456789" min="1"/></div>
+    </div>
+    <div class="field" style="max-width:360px"><label>Instance ID (optional — leave blank for any server)</label><input id="tp-instanceid" placeholder="e.g. 1234abcd-...-...."/></div>
+    <button class="btn btn-primary" onclick="runTeleport()">🚀 Teleport Player</button>
+    <div class="result-box" id="tp-result"></div>
+  </div>
+  <div class="card" style="border-color:rgba(124,92,252,.3)">
+    <h2>ℹ️ How it works</h2>
+    <p style="font-size:13px;color:var(--muted);line-height:1.7">
+      Automatically finds whichever server that username is currently in and calls <code>TeleportService:Teleport</code> (or <code>TeleportToPlaceInstance</code> if an instance ID is given).<br>
+      The player must be <strong>currently in-game</strong> for this to work.
     </p>
   </div>
 </div>
@@ -1685,6 +1708,18 @@ async function runForceSpeed() {
     showResult('spd-result', `✅ ${data.message}`);
     toast(speed === 0 ? 'Speed override disabled!' : `Speed set to ${speed}!`, 'success');
   } catch(e) { showResult('spd-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
+}
+
+async function runTeleport() {
+  const username   = document.getElementById('tp-user').value.trim();
+  const placeId    = document.getElementById('tp-placeid').value.trim();
+  const instanceId = document.getElementById('tp-instanceid').value.trim() || null;
+  if (!username || !placeId) return toast('Username and Place ID are required.', 'error');
+  try {
+    const data = await api('/api/admin/teleport', { username, placeId, instanceId });
+    showResult('tp-result', `✅ ${data.message}`);
+    toast('Teleport queued!', 'success');
+  } catch(e) { showResult('tp-result', `❌ ${e.message}`, true); toast(e.message, 'error'); }
 }
 
 async function runPoofRoad() {
