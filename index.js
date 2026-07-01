@@ -93,6 +93,11 @@ const pendingMorphBrainrots = new Map();
 // given Roblox asset sound for all clients in that server.
 const pendingPlaySounds = new Map();
 
+// ── Pending teleports: jobId -> { username, placeId, instanceId } ────────────
+// The game server polls /roblox/pending-teleport?jobId=... and, if there's a
+// match, teleports the target player to the given place (and optional instance).
+const pendingTeleports = new Map();
+
 // ── Active redeem codes: codeName -> { brainrotName, limitedUses, usedCount, createdAt } ────
 // The game server polls /roblox/redeem-codes to get the full active code list.
 // Codes persist until explicitly deleted via the admin dashboard.
@@ -308,6 +313,20 @@ app.get('/roblox/pending-playsound', (req, res) => {
   if (!entry) return res.json({ pending: false });
   pendingPlaySounds.delete(jobId); // one-shot
   res.json({ pending: true, soundId: entry.soundId });
+});
+
+// ── Teleport poll endpoint ────────────────────────────────────────────────────
+// The game server polls this each cycle. If there's a pending teleport for its
+// jobId, it returns { pending: true, username, placeId, instanceId } and the
+// server calls TeleportService:Teleport (or TeleportToPlaceInstance), then the
+// command is consumed (one-shot).
+app.get('/roblox/pending-teleport', (req, res) => {
+  const jobId = String(req.query.jobId || '');
+  if (!jobId) return res.status(400).json({ error: 'Missing jobId' });
+  const entry = pendingTeleports.get(jobId);
+  if (!entry) return res.json({ pending: false });
+  pendingTeleports.delete(jobId); // one-shot
+  res.json({ pending: true, username: entry.username, placeId: entry.placeId, instanceId: entry.instanceId || null });
 });
 
 // ── Redeem codes endpoint (polled by ALL game servers to get active codes) ────
@@ -2737,6 +2756,25 @@ app.post('/api/admin/play-sound', (req, res) => {
   pendingPlaySounds.set(jobId, { soundId: resolvedSoundId, queuedAt: Date.now() });
   console.log(`[PlaySound] Queued sound "${resolvedSoundId}" for "${username}"'s server (job ${jobId})`);
   res.json({ message: `Sound rbxassetid://${resolvedSoundId} queued for ${username}'s server. It will play for all clients on the next poll.` });
+});
+
+// Teleport — queue a teleport for a player, wherever they currently are
+app.post('/api/admin/teleport', (req, res) => {
+  const { username, placeId, instanceId } = req.body;
+  if (!username || !placeId) return res.status(400).json({ error: 'username and placeId are required' });
+  const resolvedPlaceId = String(placeId).trim();
+  if (!/^\d+$/.test(resolvedPlaceId)) return res.status(400).json({ error: 'placeId must be numeric' });
+  const jobId = findJobIdByUsername(username);
+  if (!jobId) return res.status(404).json({ error: `Could not find "${username}" in any tracked server. Make sure they're currently in-game.` });
+  pendingTeleports.set(jobId, {
+    username,
+    placeId: resolvedPlaceId,
+    instanceId: instanceId ? String(instanceId).trim() : null,
+    queuedAt: Date.now(),
+  });
+  const instLabel = instanceId ? ` (instance ${instanceId})` : '';
+  console.log(`[Teleport] Queued teleport of "${username}" to place ${resolvedPlaceId}${instLabel} on job ${jobId}`);
+  res.json({ message: `Teleport queued for ${username} to place ${resolvedPlaceId}${instLabel}.` });
 });
 
 // ── Redeem code admin endpoints ───────────────────────────────────────────────
